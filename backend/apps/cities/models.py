@@ -1,3 +1,14 @@
 from django.db import models
 
-# Create your models here.
+
+class City(models.Model):
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name_plural = 'cities'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
