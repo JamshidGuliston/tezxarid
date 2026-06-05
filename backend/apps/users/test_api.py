@@ -36,3 +36,15 @@ def test_telegram_auth_rejects_bad_signature(settings):
     init_data = build_init_data('test-bot-token', {'id': 1, 'first_name': 'X'}) + 'tamper'
     resp = APIClient().post('/api/auth/telegram/', {'init_data': init_data}, format='json')
     assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_token_refresh_returns_new_access(settings):
+    settings.TELEGRAM_BOT_TOKEN = 'test-bot-token'
+    init_data = build_init_data('test-bot-token', {'id': 999, 'first_name': 'R'})
+    auth = APIClient().post('/api/auth/telegram/', {'init_data': init_data}, format='json')
+    refresh = auth.json()['refresh']
+
+    resp = APIClient().post('/api/auth/token/refresh/', {'refresh': refresh}, format='json')
+    assert resp.status_code == 200
+    assert 'access' in resp.json()

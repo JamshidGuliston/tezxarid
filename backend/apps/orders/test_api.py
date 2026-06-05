@@ -102,3 +102,20 @@ def test_create_order_rejects_unavailable_item(shop):
                             HTTP_X_CITY_ID=str(tashkent.id))
     assert resp.status_code == 400
     assert Order.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_inactive_product(shop):
+    tashkent, _, cp_tk, _ = shop
+    product = cp_tk.product
+    product.is_active = False
+    product.save(update_fields=['is_active'])
+    payload = {
+        'customer_name': 'Aziz',
+        'phone': '+998901112233',
+        'items': [{'city_product': cp_tk.id, 'qty': 1}],
+    }
+    resp = APIClient().post('/api/orders/', payload, format='json',
+                            HTTP_X_CITY_ID=str(tashkent.id))
+    assert resp.status_code == 400
+    assert Order.objects.count() == 0

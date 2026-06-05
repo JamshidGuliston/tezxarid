@@ -6,7 +6,7 @@ from .models import Order, OrderItem
 
 class OrderItemInputSerializer(serializers.Serializer):
     city_product = serializers.PrimaryKeyRelatedField(
-        queryset=CityProduct.objects.select_related('product'))
+        queryset=CityProduct.objects.filter(product__is_active=True).select_related('product'))
     qty = serializers.IntegerField(min_value=1)
 
 
