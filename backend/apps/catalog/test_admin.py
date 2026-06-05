@@ -47,3 +47,22 @@ def test_superadmin_sees_all_cities():
     request.user = boss
 
     assert model_admin.get_queryset(request).count() == 2
+
+
+@pytest.mark.django_db
+def test_city_admin_without_city_sees_nothing():
+    tashkent = City.objects.create(name='Toshkent', slug='toshkent')
+    cat = Category.objects.create(name='Mevalar')
+    product = Product.objects.create(name='Olma', category=cat)
+    CityProduct.objects.create(city=tashkent, product=product, price=19300)
+
+    rogue = User.objects.create_user(
+        username='rogue', password='x', is_staff=True,
+        role=User.Role.CITY_ADMIN, city=None,
+    )
+
+    model_admin = CityProductAdmin(CityProduct, AdminSite())
+    request = RequestFactory().get('/admin/')
+    request.user = rogue
+
+    assert model_admin.get_queryset(request).count() == 0

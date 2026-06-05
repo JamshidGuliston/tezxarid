@@ -1,4 +1,5 @@
 from django.contrib import admin
+from apps.users.models import User
 from .models import Category, Product, CityProduct
 
 
@@ -9,10 +10,13 @@ class CityScopedAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         user = request.user
-        if user.is_superuser or getattr(user, 'role', None) == 'superadmin':
+        role = getattr(user, 'role', None)
+        if user.is_superuser or role == User.Role.SUPERADMIN:
             return qs
-        if getattr(user, 'role', None) == 'city_admin' and user.city_id:
-            return qs.filter(**{self.city_field: user.city_id})
+        if role == User.Role.CITY_ADMIN:
+            if user.city_id:
+                return qs.filter(**{self.city_field: user.city_id})
+            return qs.none()  # city_admin with no city sees nothing (safe default)
         return qs
 
 
