@@ -17,7 +17,7 @@ class CityScopedAdmin(admin.ModelAdmin):
             if user.city_id:
                 return qs.filter(**{self.city_field: user.city_id})
             return qs.none()  # city_admin with no city sees nothing (safe default)
-        return qs
+        return qs.none()  # unknown/unprivileged staff role sees nothing (safe default)
 
 
 @admin.register(Category)

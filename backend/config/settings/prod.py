@@ -1,6 +1,11 @@
 import os
+from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa
+
+if 'DJANGO_SECRET_KEY' not in os.environ:
+    raise ImproperlyConfigured('DJANGO_SECRET_KEY environment variable must be set in production.')
+SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 
 DEBUG = False
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'tezxarid.uz').split(',')
