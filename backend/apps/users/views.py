@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import status
@@ -26,10 +28,15 @@ class TelegramAuthView(APIView):
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         telegram_id = tg_user['id']
-        user, _ = User.objects.get_or_create(
-            telegram_id=telegram_id,
-            defaults={'username': f'tg_{telegram_id}'},
-        )
+        existing = User.objects.filter(telegram_id=telegram_id).first()
+        if existing is None:
+            username = f'tg_{telegram_id}'
+            while User.objects.filter(username=username).exists():
+                username = f'tg_{telegram_id}_{uuid4().hex[:6]}'
+            user, _ = User.objects.get_or_create(
+                telegram_id=telegram_id, defaults={'username': username})
+        else:
+            user = existing
         user.first_name = tg_user.get('first_name', '')
         user.last_name = tg_user.get('last_name', '')
         user.save(update_fields=['first_name', 'last_name'])
