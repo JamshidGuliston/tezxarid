@@ -1,4 +1,5 @@
 from rest_framework.generics import ListAPIView
+from rest_framework.exceptions import ValidationError
 from apps.common.city import resolve_city
 from .models import Category, CityProduct
 from .serializers import CategorySerializer, CityProductSerializer
@@ -24,7 +25,10 @@ class ProductListView(ListAPIView):
               .order_by('product__name'))
         category = self.request.query_params.get('category')
         if category:
-            qs = qs.filter(product__category_id=category)
+            try:
+                qs = qs.filter(product__category_id=int(category))
+            except (TypeError, ValueError):
+                raise ValidationError({'category': 'category must be an integer.'})
         search = self.request.query_params.get('search')
         if search:
             qs = qs.filter(product__name__icontains=search)

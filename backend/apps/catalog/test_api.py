@@ -68,3 +68,10 @@ def test_products_search_by_name(catalog):
     resp = APIClient().get('/api/products/?search=olm', HTTP_X_CITY_ID=str(city.id))
     assert resp.status_code == 200
     assert [p['name'] for p in resp.json()] == ['Olma']
+
+
+@pytest.mark.django_db
+def test_products_invalid_category_returns_400(catalog):
+    city, fruits, olma = catalog
+    resp = APIClient().get('/api/products/?category=abc', HTTP_X_CITY_ID=str(city.id))
+    assert resp.status_code == 400
