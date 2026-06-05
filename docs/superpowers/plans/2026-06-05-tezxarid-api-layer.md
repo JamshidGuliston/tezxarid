@@ -1282,3 +1282,24 @@ No commit needed if nothing changed.
 - Price assertions use Django's `DecimalField` string form (`'38600.00'`, `'19300.00'`) — consistent with `max_digits=12, decimal_places=2`.
 
 **Note on Task 1 ↔ Task 3 ordering:** The smoke test `test_cities_url_is_registered` is written in Task 1 but only goes green in Task 3 (when the cities urls are wired). Under subagent-driven execution, do not treat its red state at end of Task 1 as a failure — Task 1's acceptance is `manage.py check` passing. This is called out inline in Task 1 Step 3 and Task 3 Step 4.
+
+---
+
+## Frontend contract notes (for Plan 3)
+
+The Angular client must respect these API contract details:
+
+- **Order items use `city_product_id`, not `id`.** In `GET /api/products/` each row has `id` (= Product id, for display/grouping) AND `city_product_id` (= CityProduct id). When POSTing an order, send `items: [{city_product: <city_product_id>, qty: N}]`.
+- **`X-City-Id` header is required** on `GET /api/products/` and `POST /api/orders/`. Send it on every catalog/order request via an HTTP interceptor.
+- **Auth:** `POST /api/auth/telegram/` → `{access, refresh}`. Refresh via `POST /api/auth/token/refresh/` with `{refresh}` → `{access}`. Attach `Authorization: Bearer <access>` for `GET /api/orders/` (own order history).
+- **Image URLs are absolute** (include the API host) — use them directly in `<img src>`.
+- **`total`/`price` are decimal strings** (e.g. `"38600.00"`), not numbers — parse for arithmetic/formatting.
+- **`OrderSerializer.city` is a bare integer** (city PK), not a nested object.
+- **No pagination** on list endpoints (returns plain arrays).
+
+## Carry-over to a later hardening pass (deferred, non-blocking)
+
+- **Username-generation race (very low probability, ~16M hex space):** concurrent first-logins of two *different* `telegram_id`s could collide on a generated `tg_<id>_<hex6>` username and raise IntegrityError → 500. Wrap the create in `try/except IntegrityError` + retry if/when traffic warrants.
+- **`OrderSerializer.Meta.read_only_fields = list(fields)`** includes `'items'`, which is dead config (the declared `items` field is already `read_only=True`). Cosmetic; tidy to an explicit tuple when next touched.
+- **Phone format validation:** `Order.phone` / order create accept any string ≤20 chars. Add a `RegexValidator` (e.g. `^\+?[0-9]{7,15}$`) when phone becomes load-bearing.
+- **Stock/overselling:** `CityProduct.stock` is neither checked nor decremented on order. Acceptable while fulfillment is manual; revisit before launch.
