@@ -86,3 +86,19 @@ def test_order_list_requires_auth_and_returns_only_own(shop):
     resp = client.get('/api/orders/')
     assert resp.status_code == 200
     assert [o['customer_name'] for o in resp.json()] == ['Owner']
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_unavailable_item(shop):
+    tashkent, _, cp_tk, _ = shop
+    cp_tk.is_available = False
+    cp_tk.save(update_fields=['is_available'])
+    payload = {
+        'customer_name': 'Aziz',
+        'phone': '+998901112233',
+        'items': [{'city_product': cp_tk.id, 'qty': 1}],
+    }
+    resp = APIClient().post('/api/orders/', payload, format='json',
+                            HTTP_X_CITY_ID=str(tashkent.id))
+    assert resp.status_code == 400
+    assert Order.objects.count() == 0

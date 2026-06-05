@@ -13,6 +13,9 @@ class OrderListCreateView(CityScopedAPIView):
             data=request.data, context={'request': request, 'city': self.city})
         serializer.is_valid(raise_exception=True)
         order = serializer.save()
+        order = (Order.objects
+                 .prefetch_related('items__city_product__product')
+                 .get(pk=order.pk))
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
     def get(self, request):

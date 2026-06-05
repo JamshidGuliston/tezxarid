@@ -5,7 +5,8 @@ from .models import Order, OrderItem
 
 
 class OrderItemInputSerializer(serializers.Serializer):
-    city_product = serializers.PrimaryKeyRelatedField(queryset=CityProduct.objects.all())
+    city_product = serializers.PrimaryKeyRelatedField(
+        queryset=CityProduct.objects.select_related('product'))
     qty = serializers.IntegerField(min_value=1)
 
 
@@ -24,7 +25,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = ['id', 'city', 'customer_name', 'phone', 'status',
                   'payment_type', 'total', 'created_at', 'items']
-        read_only_fields = fields
+        read_only_fields = list(fields)
 
 
 class OrderCreateSerializer(serializers.Serializer):
