@@ -32,3 +32,9 @@ def test_order_item_snapshots_price(setup):
     assert item.qty == 2
     assert item.price_snapshot == 19300
     assert order.items.count() == 1
+
+    # snapshot must stay fixed even if the catalog price later changes
+    cp.price = 99999
+    cp.save()
+    item.refresh_from_db()
+    assert item.price_snapshot == 19300
