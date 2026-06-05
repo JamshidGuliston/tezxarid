@@ -23,7 +23,7 @@ def test_city_product_holds_price(city, apple):
     assert cp.price == 19300
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 def test_city_product_unique_per_city(city, apple):
     CityProduct.objects.create(city=city, product=apple, price=19300)
     with pytest.raises(IntegrityError):
