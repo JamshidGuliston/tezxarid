@@ -7,6 +7,10 @@ if 'DJANGO_SECRET_KEY' not in os.environ:
     raise ImproperlyConfigured('DJANGO_SECRET_KEY environment variable must be set in production.')
 SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 
+if 'TELEGRAM_BOT_TOKEN' not in os.environ:
+    raise ImproperlyConfigured('TELEGRAM_BOT_TOKEN environment variable must be set in production.')
+TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
+
 DEBUG = False
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'tezxarid.uz').split(',')
 DATABASES = {
