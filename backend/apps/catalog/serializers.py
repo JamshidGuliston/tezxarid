@@ -14,9 +14,10 @@ class CityProductSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='product.name', read_only=True)
     image = serializers.ImageField(source='product.image', read_only=True)
     unit = serializers.CharField(source='product.unit', read_only=True)
+    step = serializers.DecimalField(source='product.step', max_digits=6, decimal_places=3, read_only=True)
     category = serializers.IntegerField(source='product.category_id', read_only=True)
 
     class Meta:
         model = CityProduct
-        fields = ['id', 'city_product_id', 'name', 'image', 'unit',
+        fields = ['id', 'city_product_id', 'name', 'image', 'unit', 'step',
                   'category', 'price', 'is_available', 'stock']

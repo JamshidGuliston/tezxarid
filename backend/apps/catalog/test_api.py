@@ -75,3 +75,14 @@ def test_products_invalid_category_returns_400(catalog):
     city, fruits, olma = catalog
     resp = APIClient().get('/api/products/?category=abc', HTTP_X_CITY_ID=str(city.id))
     assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_products_expose_step(catalog):
+    city, fruits, olma = catalog
+    from decimal import Decimal
+    olma.step = Decimal('0.5')
+    olma.save(update_fields=['step'])
+    resp = APIClient().get('/api/products/', HTTP_X_CITY_ID=str(city.id))
+    assert resp.status_code == 200
+    assert resp.json()[0]['step'] == '0.500'
