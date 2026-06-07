@@ -1,5 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
+import { switchMap } from 'rxjs';
 import { CatalogApi } from '../../core/api/catalog-api';
 import { Product } from '../../core/api/models/catalog.models';
 import { CartStore } from '../../core/cart/cart.store';
@@ -34,9 +36,13 @@ export class Category {
   products = signal<Product[]>([]);
 
   constructor() {
-    this.route.paramMap.subscribe((pm) => {
-      const id = Number(pm.get('id'));
-      this.api.getProducts(id).subscribe((list) => this.products.set(list));
-    });
+    // switchMap cancels a stale products request when the category id changes
+    // (e.g. fast desktop-sidebar navigation); takeUntilDestroyed cleans up on destroy.
+    this.route.paramMap
+      .pipe(
+        switchMap((pm) => this.api.getProducts(Number(pm.get('id')))),
+        takeUntilDestroyed(),
+      )
+      .subscribe((list) => this.products.set(list));
   }
 }
