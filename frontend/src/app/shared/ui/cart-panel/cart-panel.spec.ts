@@ -30,6 +30,10 @@ describe('CartPanel', () => {
   it('shows an empty message when the cart is empty', async () => {
     const fixture = TestBed.createComponent(CartPanel);
     await fixture.whenStable();
-    expect(fixture.nativeElement.textContent.toLowerCase()).toContain('savat');
+    const empty = fixture.nativeElement.querySelector('.empty');
+    expect(empty).toBeTruthy();
+    expect(empty.textContent).toContain('bo');
+    // when empty there are no item rows
+    expect(fixture.nativeElement.querySelector('.row')).toBeFalsy();
   });
 });
