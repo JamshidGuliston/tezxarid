@@ -35,8 +35,11 @@ export class Shell {
   categories = signal<Category[]>([]);
 
   constructor() {
-    this.city.init().then(() => {
-      this.api.getCategories().subscribe((list) => this.categories.set(list));
-    });
+    this.city
+      .init()
+      .then(() => {
+        this.api.getCategories().subscribe((list) => this.categories.set(list));
+      })
+      .catch((err) => console.error('City init failed', err));
   }
 }

@@ -1686,4 +1686,19 @@ No commit if nothing changed.
 - Component selectors prefixed `tx-` (and `app-shell`, `app-root`) used consistently in templates and tests.
 - The feature class `Category` (features/category/category.ts) vs the model interface `Category` (core/api/models) live in separate files and are never imported into the same module, so there is no symbol clash. Task 7 Step 4 calls this out explicitly.
 
-**Known cross-file note:** `npm test` / `npx ng test --watch=false` runs the WHOLE Vitest suite each time (~30s startup), so each task's "run tests" step executes all specs, not just the new file. Expected pass counts grow cumulatively. This is acceptable; there is no fast single-file runner configured.
+**Known cross-file note:** `npm test` / `npx ng test --watch=false` runs the WHOLE Vitest suite each time (~30s startup), so each task's "run tests" step executes all specs, not just the new file. Expected pass counts grow cumulatively. A fast targeted run IS available: `npx ng test --watch=false --include="<glob>"` (e.g. `--include="src/app/features/**/*.spec.ts"`) finishes in ~2s — use it during dev, then one full run at the end.
+
+---
+
+## Post-implementation notes (smoke + final review)
+
+**Verified working (manual browser smoke, 2026-06-07):** desktop 3-pane (sidebar/grid/cart) and mobile single-column + bottom-nav + floating-cart both render correctly; categories, products, formatted prices ("21 400 сум"), per-product steppers, fractional add-to-cart (0.5 кг), and the correct running total (31 050 сум) all work end-to-end. 26 unit tests pass; production build clean (258 kB raw / 72 kB transfer, lazy chunks per feature).
+
+**Bug found & fixed during smoke:** browser CORS preflight rejected the custom `X-City-Id` header → all city-scoped requests from the Angular origin failed. Fixed by adding `x-city-id` to `CORS_ALLOW_HEADERS` in `backend/config/settings/base.py` (commit), with a settings regression test.
+
+**Carry-over to Plan 3b (order form) — address at the start of 3b:**
+1. **`CityService.init()` should become an `APP_INITIALIZER`** (in `app.config.ts`) rather than running in the `Shell` constructor. This guarantees `cityId` is set before ANY routed component/guard/resolver loads — the 3b order form (which needs the city) would otherwise see `activeCity() === null` on a hard load. (A `.catch()` was added to the shell's init in 3a as a stopgap against silent failure.)
+2. **Categories are fetched twice on cold load** (Shell sidebar + Home cards, separate signals). Lift categories into a shared `CatalogStore` (single `loadCategories()` + `categories` signal consumed by both) to dedupe — also a natural home for 3b's product caching.
+3. **`UNIT_LABELS` is duplicated** in `qty-stepper.ts` and `product-card.ts`. Extract to a shared `shared/utils/units.ts` (or onto the model) before a new unit is added.
+4. **`bottom-nav` links `/search`, `/orders`, `/profile`** are live but unrouted (wildcard redirects them home). 3c adds these routes; until then they are misleading — consider disabling.
+5. **"Buyurtma berish" button** (cart-panel) has no handler yet — 3b wires it to the checkout/order flow.
