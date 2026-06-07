@@ -86,3 +86,10 @@ def test_products_expose_step(catalog):
     resp = APIClient().get('/api/products/', HTTP_X_CITY_ID=str(city.id))
     assert resp.status_code == 200
     assert resp.json()[0]['step'] == '0.500'
+
+
+@pytest.mark.django_db
+def test_cors_allows_city_header():
+    # The frontend sends X-City-Id; CORS preflight must permit it.
+    from django.conf import settings
+    assert 'x-city-id' in settings.CORS_ALLOW_HEADERS

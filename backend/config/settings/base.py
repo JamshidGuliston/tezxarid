@@ -129,3 +129,8 @@ TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', 'test-bot-token')
 
 # CORS: overridden per-environment. Default deny (same-domain prod).
 CORS_ALLOWED_ORIGINS = []
+
+# Allow the custom city header through CORS preflight (frontend sends X-City-Id).
+from corsheaders.defaults import default_headers  # noqa: E402
+
+CORS_ALLOW_HEADERS = (*default_headers, 'x-city-id')
