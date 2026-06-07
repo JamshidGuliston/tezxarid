@@ -189,3 +189,26 @@ def test_create_order_with_saved_address_id_snapshots(shop):
     assert order.address == 'Yunusobod 12'
     assert order.latitude == Decimal('41.300000')
     assert order.address_ref_id == addr.id
+
+
+@pytest.mark.django_db
+def test_create_order_step_tenth_precision(shop):
+    from decimal import Decimal
+    tashkent, _, cp_tk, _ = shop
+    cp_tk.product.step = Decimal('0.1')
+    cp_tk.product.save(update_fields=['step'])
+
+    # 0.3 is a clean multiple of 0.1 -> accepted
+    ok = APIClient().post('/api/orders/', {
+        'customer_name': 'Aziz', 'phone': '+998901112233', 'address': 'Chilonzor 5',
+        'items': [{'city_product': cp_tk.id, 'qty': '0.3'}],
+    }, format='json', HTTP_X_CITY_ID=str(tashkent.id))
+    assert ok.status_code == 201
+    assert ok.json()['total'] == '5790.00'  # 19300 * 0.3
+
+    # 0.35 is NOT a multiple of 0.1 -> rejected
+    bad = APIClient().post('/api/orders/', {
+        'customer_name': 'Aziz', 'phone': '+998901112233', 'address': 'Chilonzor 5',
+        'items': [{'city_product': cp_tk.id, 'qty': '0.35'}],
+    }, format='json', HTTP_X_CITY_ID=str(tashkent.id))
+    assert bad.status_code == 400
