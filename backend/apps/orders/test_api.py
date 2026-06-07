@@ -26,6 +26,7 @@ def test_create_order_computes_total_server_side(shop):
     payload = {
         'customer_name': 'Aziz',
         'phone': '+998901112233',
+        'address': 'Chilonzor 5',
         'items': [{'city_product': cp_tk.id, 'qty': 2}],
     }
     resp = APIClient().post('/api/orders/', payload, format='json',
@@ -45,6 +46,7 @@ def test_create_order_rejects_city_product_from_other_city(shop):
     payload = {
         'customer_name': 'Aziz',
         'phone': '+998901112233',
+        'address': 'Chilonzor 5',
         'items': [{'city_product': cp_sm.id, 'qty': 1}],
     }
     resp = APIClient().post('/api/orders/', payload, format='json',
@@ -56,7 +58,7 @@ def test_create_order_rejects_city_product_from_other_city(shop):
 @pytest.mark.django_db
 def test_create_order_requires_city_header(shop):
     tashkent, _, cp_tk, _ = shop
-    payload = {'customer_name': 'A', 'phone': '+9989', 'items': [{'city_product': cp_tk.id, 'qty': 1}]}
+    payload = {'customer_name': 'A', 'phone': '+9989', 'address': 'Chilonzor 5', 'items': [{'city_product': cp_tk.id, 'qty': 1}]}
     resp = APIClient().post('/api/orders/', payload, format='json')
     assert resp.status_code == 400
 
@@ -64,7 +66,7 @@ def test_create_order_requires_city_header(shop):
 @pytest.mark.django_db
 def test_create_order_requires_at_least_one_item(shop):
     tashkent, _, _, _ = shop
-    payload = {'customer_name': 'A', 'phone': '+9989', 'items': []}
+    payload = {'customer_name': 'A', 'phone': '+9989', 'address': 'Chilonzor 5', 'items': []}
     resp = APIClient().post('/api/orders/', payload, format='json',
                             HTTP_X_CITY_ID=str(tashkent.id))
     assert resp.status_code == 400
@@ -96,6 +98,7 @@ def test_create_order_rejects_unavailable_item(shop):
     payload = {
         'customer_name': 'Aziz',
         'phone': '+998901112233',
+        'address': 'Chilonzor 5',
         'items': [{'city_product': cp_tk.id, 'qty': 1}],
     }
     resp = APIClient().post('/api/orders/', payload, format='json',
@@ -113,9 +116,76 @@ def test_create_order_rejects_inactive_product(shop):
     payload = {
         'customer_name': 'Aziz',
         'phone': '+998901112233',
+        'address': 'Chilonzor 5',
         'items': [{'city_product': cp_tk.id, 'qty': 1}],
     }
     resp = APIClient().post('/api/orders/', payload, format='json',
                             HTTP_X_CITY_ID=str(tashkent.id))
     assert resp.status_code == 400
     assert Order.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_create_order_requires_address(shop):
+    tashkent, _, cp_tk, _ = shop
+    payload = {'customer_name': 'Aziz', 'phone': '+998901112233',
+               'items': [{'city_product': cp_tk.id, 'qty': 1}]}  # no address
+    resp = APIClient().post('/api/orders/', payload, format='json',
+                            HTTP_X_CITY_ID=str(tashkent.id))
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_create_order_accepts_fractional_qty_matching_step(shop):
+    from decimal import Decimal
+    tashkent, _, cp_tk, _ = shop
+    cp_tk.product.step = Decimal('0.5')
+    cp_tk.product.save(update_fields=['step'])
+    payload = {'customer_name': 'Aziz', 'phone': '+998901112233',
+               'address': 'Chilonzor 5',
+               'items': [{'city_product': cp_tk.id, 'qty': '0.5'}]}
+    resp = APIClient().post('/api/orders/', payload, format='json',
+                            HTTP_X_CITY_ID=str(tashkent.id))
+    assert resp.status_code == 201
+    assert resp.json()['total'] == '9650.00'  # 19300 * 0.5
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_qty_not_multiple_of_step(shop):
+    from decimal import Decimal
+    tashkent, _, cp_tk, _ = shop
+    cp_tk.product.step = Decimal('0.5')
+    cp_tk.product.save(update_fields=['step'])
+    payload = {'customer_name': 'Aziz', 'phone': '+998901112233',
+               'address': 'Chilonzor 5',
+               'items': [{'city_product': cp_tk.id, 'qty': '0.3'}]}
+    resp = APIClient().post('/api/orders/', payload, format='json',
+                            HTTP_X_CITY_ID=str(tashkent.id))
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_create_order_with_saved_address_id_snapshots(shop):
+    from decimal import Decimal
+    from django.contrib.auth import get_user_model
+    from rest_framework_simplejwt.tokens import RefreshToken
+    from apps.users.models import Address
+    from apps.orders.models import Order
+    User = get_user_model()
+    tashkent, _, cp_tk, _ = shop
+    user = User.objects.create_user(username='aziz', password='x', telegram_id=10)
+    addr = Address.objects.create(user=user, city=tashkent, title='Uy',
+                                  address='Yunusobod 12', latitude=Decimal('41.3'),
+                                  longitude=Decimal('69.2'))
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(user).access_token}')
+    payload = {'customer_name': 'Aziz', 'phone': '+998901112233',
+               'address_id': addr.id,
+               'items': [{'city_product': cp_tk.id, 'qty': 1}]}
+    resp = client.post('/api/orders/', payload, format='json',
+                       HTTP_X_CITY_ID=str(tashkent.id))
+    assert resp.status_code == 201
+    order = Order.objects.get(pk=resp.json()['id'])
+    assert order.address == 'Yunusobod 12'
+    assert order.latitude == Decimal('41.300000')
+    assert order.address_ref_id == addr.id

@@ -12,7 +12,9 @@ class OrderItemInline(admin.TabularInline):
 @admin.register(Order)
 class OrderAdmin(CityScopedAdmin):
     city_field = 'city'
-    list_display = ['id', 'city', 'customer_name', 'phone', 'status', 'payment_type', 'total', 'created_at']
+    list_display = ['id', 'city', 'customer_name', 'phone', 'status',
+                    'payment_type', 'total', 'address', 'created_at']
     list_filter = ['city', 'status', 'payment_type']
-    search_fields = ['customer_name', 'phone']
+    search_fields = ['customer_name', 'phone', 'address']
+    readonly_fields = ['created_at', 'updated_at', 'latitude', 'longitude']
     inlines = [OrderItemInline]
