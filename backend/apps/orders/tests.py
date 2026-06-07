@@ -1,4 +1,5 @@
 import pytest
+from decimal import Decimal
 from apps.cities.models import City
 from apps.catalog.models import Category, Product, CityProduct
 from apps.orders.models import Order, OrderItem
@@ -38,3 +39,29 @@ def test_order_item_snapshots_price(setup):
     cp.save()
     item.refresh_from_db()
     assert item.price_snapshot == 19300
+
+
+@pytest.mark.django_db
+def test_order_item_accepts_fractional_qty(setup):
+    city, cp = setup
+    order = Order.objects.create(
+        city=city, customer_name='Aziz', phone='+998901112233',
+        address='Chilonzor 5', total=Decimal('9650'))
+    item = OrderItem.objects.create(
+        order=order, city_product=cp, qty=Decimal('0.5'), price_snapshot=cp.price)
+    item.refresh_from_db()
+    assert item.qty == Decimal('0.5')
+
+
+@pytest.mark.django_db
+def test_order_has_delivery_fields(setup):
+    city, cp = setup
+    order = Order.objects.create(
+        city=city, customer_name='Aziz', phone='+998901112233',
+        address='Chilonzor 5-uy', latitude=Decimal('41.311081'),
+        longitude=Decimal('69.240562'), comment='Eshik oldida qoldiring', total=0)
+    assert order.address == 'Chilonzor 5-uy'
+    assert order.latitude == Decimal('41.311081')
+    assert order.longitude == Decimal('69.240562')
+    assert order.comment == 'Eshik oldida qoldiring'
+    assert order.updated_at is not None
