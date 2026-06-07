@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -26,7 +29,9 @@ class Product(models.Model):
     name = models.CharField(max_length=150)
     image = models.ImageField(upload_to='products/', blank=True)
     unit = models.CharField(max_length=8, choices=Unit.choices, default=Unit.KG)
-    step = models.DecimalField(max_digits=6, decimal_places=3, default=1)
+    step = models.DecimalField(
+        max_digits=6, decimal_places=3, default=Decimal('1'),
+        validators=[MinValueValidator(Decimal('0.001'))])
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     is_active = models.BooleanField(default=True)
 

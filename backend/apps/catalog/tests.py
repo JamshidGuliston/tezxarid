@@ -42,3 +42,12 @@ def test_product_units_and_step():
     bread = Product.objects.create(name='Non', unit=Product.Unit.PIECE, category=cat)
     assert bread.step == Decimal('1')
     assert {u.value for u in Product.Unit} == {'kg', 'sht', 'l', 'g', 'boglam'}
+
+
+@pytest.mark.django_db
+def test_product_step_must_be_positive():
+    from django.core.exceptions import ValidationError
+    cat = Category.objects.create(name='Test')
+    p = Product(name='Bad', category=cat, step=Decimal('0'))
+    with pytest.raises(ValidationError):
+        p.full_clean()
