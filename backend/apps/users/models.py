@@ -18,3 +18,21 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class Address(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='addresses')
+    city = models.ForeignKey('cities.City', on_delete=models.PROTECT, related_name='addresses')
+    title = models.CharField(max_length=50, blank=True)
+    address = models.CharField(max_length=500)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    is_default = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_default', '-created_at']
+
+    def __str__(self):
+        label = self.title or 'Manzil'
+        return f'{label} — {self.address}'
