@@ -1,1 +1,5 @@
-/* You can add global styles to this file, and also import other style files */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: system-ui, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; background: #fff; }
+a { -webkit-tap-highlight-color: transparent; }
+:root { --brand: #F60; }
