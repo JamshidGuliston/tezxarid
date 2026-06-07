@@ -84,3 +84,24 @@ def test_setting_new_default_unsets_previous(setup):
     a1.refresh_from_db()
     assert a1.is_default is False
     assert Address.objects.filter(user=user, is_default=True).count() == 1
+
+
+@pytest.mark.django_db
+def test_cannot_update_others_address(setup):
+    city, user = setup
+    other = User.objects.create_user(username='other', password='x', telegram_id=20)
+    addr = Address.objects.create(user=other, city=city, address='Himoyalangan', title='Eski')
+    resp = auth_client(user).patch(f'/api/addresses/{addr.id}/', {'title': 'Buzildi'}, format='json')
+    assert resp.status_code == 404
+    addr.refresh_from_db()
+    assert addr.title == 'Eski'  # unchanged
+
+
+@pytest.mark.django_db
+def test_retrieve_own_address_detail(setup):
+    city, user = setup
+    addr = Address.objects.create(user=user, city=city, address='Mening manzilim', title='Uy')
+    resp = auth_client(user).get(f'/api/addresses/{addr.id}/')
+    assert resp.status_code == 200
+    assert resp.json()['title'] == 'Uy'
+    assert resp.json()['address'] == 'Mening manzilim'
