@@ -1,6 +1,6 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-@Pipe({ name: 'sum' })
+@Pipe({ name: 'sum', standalone: true })
 export class SumPipe implements PipeTransform {
   transform(value: string | number | null | undefined): string {
     const n = Number(value ?? 0) || 0;
