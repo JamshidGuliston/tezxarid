@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { OrderSuccess } from './order-success';
 import { OrderStore } from '../../core/orders/order.store';
 import { Order } from '../../core/api/models/order.models';
@@ -15,14 +15,13 @@ describe('OrderSuccess', () => {
     imports: [OrderSuccess], providers: [provideRouter([]), OrderStore],
   }));
 
-  it('redirects home when there is no order to show', async () => {
-    const nav = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+  it('renders nothing when there is no order (the route guard handles the redirect)', async () => {
     const fixture = TestBed.createComponent(OrderSuccess);
     await fixture.whenStable();
-    expect(nav).toHaveBeenCalledWith('/');
+    expect(fixture.nativeElement.querySelector('.page')).toBeNull();
   });
 
-  it('shows the order number, delivery window, address and total', async () => {
+  it('shows the order number, delivery window, address and total, and focuses the heading', async () => {
     TestBed.inject(OrderStore).lastOrder.set(ORDER);
     const fixture = TestBed.createComponent(OrderSuccess);
     await fixture.whenStable();
@@ -33,5 +32,6 @@ describe('OrderSuccess', () => {
     expect(text).toContain('Chilonzor 5');
     expect(text).toContain("19 300 so'm");
     expect(fixture.nativeElement.querySelector('a.home').getAttribute('href')).toBe('/');
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('h2'));
   });
 });

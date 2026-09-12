@@ -1,9 +1,10 @@
-import { Component, computed, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, ElementRef, afterNextRender, computed, inject, viewChild } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { OrderStore } from '../../core/orders/order.store';
 import { SumPipe } from '../../shared/pipes/sum.pipe';
 import { formatDayMonth } from '../../shared/utils/dates';
 
+/** Guarded by `orderExistsGuard`: an order is always present when this renders. */
 @Component({
   selector: 'tx-order-success',
   standalone: true,
@@ -12,7 +13,7 @@ import { formatDayMonth } from '../../shared/utils/dates';
     @if (order(); as o) {
       <div class="page">
         <div class="check" aria-hidden="true">✓</div>
-        <h2>Buyurtma qabul qilindi</h2>
+        <h2 #heading tabindex="-1">Buyurtma qabul qilindi</h2>
         <p class="num">№ {{ o.id }}</p>
         <dl class="facts">
           <div><dt>Yetkazish</dt><dd>{{ dateLabel() }}, {{ o.delivery_start }} – {{ o.delivery_end }}</dd></div>
@@ -29,7 +30,7 @@ import { formatDayMonth } from '../../shared/utils/dates';
     .page { max-width: 480px; margin: 0 auto; padding: 2rem 1rem; text-align: center; }
     .check { width: 4rem; height: 4rem; margin: 0 auto 1rem; border-radius: 50%; background: #e8f7ee;
       color: #1a7f4b; font-size: 2rem; display: grid; place-items: center; }
-    h2 { margin: 0 0 .25rem; }
+    h2 { margin: 0 0 .25rem; outline: none; }
     .num { color: #6b6b6b; margin: 0 0 1.25rem; }
     .facts { text-align: left; background: #f3f3f3; border-radius: 14px; padding: .5rem 1rem; margin: 0 0 1rem; }
     .facts div { display: flex; justify-content: space-between; gap: 1rem; padding: .5rem 0; border-bottom: 1px solid #e6e6e6; }
@@ -43,15 +44,16 @@ import { formatDayMonth } from '../../shared/utils/dates';
   `],
 })
 export class OrderSuccess {
-  private router = inject(Router);
   order = inject(OrderStore).lastOrder;
   dateLabel = computed(() => {
     const o = this.order();
     return o ? formatDayMonth(o.delivery_date) : '';
   });
 
+  private heading = viewChild<ElementRef<HTMLElement>>('heading');
+
   constructor() {
-    // Hard refresh (or a direct visit) loses the in-memory order — nothing to show, go home.
-    if (!this.order()) void this.router.navigateByUrl('/');
+    // Route changes don't move focus: announce the confirmation to screen-reader users.
+    afterNextRender(() => this.heading()?.nativeElement.focus());
   }
 }
