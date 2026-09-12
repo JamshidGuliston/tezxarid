@@ -8,5 +8,5 @@ export const UNIT_LABELS: Record<string, string> = {
 };
 
 export function unitLabel(unit: string): string {
-  return UNIT_LABELS[unit] ?? unit;
+  return Object.hasOwn(UNIT_LABELS, unit) ? UNIT_LABELS[unit] : unit;
 }

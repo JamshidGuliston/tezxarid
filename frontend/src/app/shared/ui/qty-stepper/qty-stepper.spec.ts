@@ -22,9 +22,9 @@ describe('QtyStepper', () => {
   it('renders the qty and unit label', async () => {
     const fixture = TestBed.createComponent(QtyStepper);
     fixture.componentRef.setInput('qty', 3);
-    fixture.componentRef.setInput('unit', 'kg');
+    fixture.componentRef.setInput('unit', 'sht');
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('3');
-    expect(fixture.nativeElement.textContent).toContain('kg');
+    expect(fixture.nativeElement.textContent).toContain('dona');
   });
 });

@@ -14,13 +14,13 @@ describe('ProductCard', () => {
 
   it('shows name, formatted price and unit label', async () => {
     const fixture = TestBed.createComponent(ProductCard);
-    fixture.componentRef.setInput('product', product());
+    fixture.componentRef.setInput('product', product({ unit: 'sht' }));
     fixture.componentRef.setInput('qty', 0);
     await fixture.whenStable();
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Olma Saltanat');
     expect(text).toContain("19 300 so'm");
-    expect(text).toContain('1 kg');
+    expect(text).toContain('1 dona');
   });
 
   it('emits add when the + button is clicked and qty is 0', async () => {

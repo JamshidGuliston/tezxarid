@@ -20,7 +20,7 @@ import { unitLabel } from '../../utils/units';
       </div>
       <div class="price">{{ product().price | sum }}</div>
       <div class="name">{{ product().name }}</div>
-      <div class="unit">1 {{ unitLabel() }}</div>
+      <div class="unit">1 {{ label() }}</div>
     </article>
   `,
   styles: [`
@@ -43,5 +43,5 @@ export class ProductCard {
   dec = output<void>();
 
   bg = computed(() => (this.product().image ? `url(${this.product().image})` : 'none'));
-  unitLabel = computed(() => unitLabel(this.product().unit));
+  label = computed(() => unitLabel(this.product().unit));
 }

@@ -1040,8 +1040,14 @@ describe('unitLabel', () => {
   it('falls back to the raw code', () => {
     expect(unitLabel('box')).toBe('box');
   });
+
+  it('covers exactly the API unit codes and ignores prototype keys', () => {
+    expect(Object.keys(UNIT_LABELS)).toEqual(['kg', 'sht', 'l', 'g', 'boglam']);
+    expect(unitLabel('toString')).toBe('toString');
+  });
 });
 ```
+(imports `{ UNIT_LABELS, unitLabel }` from `./units`.)
 Replace `frontend/src/app/shared/pipes/sum.pipe.spec.ts` with:
 ```typescript
 import { SumPipe } from './sum.pipe';
@@ -1067,14 +1073,14 @@ describe('SumPipe', () => {
   });
 });
 ```
-In `frontend/src/app/shared/ui/qty-stepper/qty-stepper.spec.ts` change the last assertion to:
+In `frontend/src/app/shared/ui/qty-stepper/qty-stepper.spec.ts` change the "renders the qty and unit label" test to use a unit whose label differs from its code (so the map is actually exercised): set `unit` to `'sht'` and assert:
 ```typescript
-    expect(fixture.nativeElement.textContent).toContain('kg');
+    expect(fixture.nativeElement.textContent).toContain('dona');
 ```
-In `frontend/src/app/shared/ui/product-card/product-card.spec.ts` change the two assertions in the first test to:
+In `frontend/src/app/shared/ui/product-card/product-card.spec.ts` change the first test to build the product with `unit: 'sht'` (`product({ unit: 'sht' })`) and change its two assertions to:
 ```typescript
     expect(text).toContain("19 300 so'm");
-    expect(text).toContain('1 kg');
+    expect(text).toContain('1 dona');
 ```
 In `frontend/src/app/shared/ui/cart-panel/cart-panel.spec.ts` change the total assertion to:
 ```typescript
@@ -1100,7 +1106,7 @@ export const UNIT_LABELS: Record<string, string> = {
 };
 
 export function unitLabel(unit: string): string {
-  return UNIT_LABELS[unit] ?? unit;
+  return Object.hasOwn(UNIT_LABELS, unit) ? UNIT_LABELS[unit] : unit;
 }
 ```
 In `frontend/src/app/shared/pipes/sum.pipe.ts` change the return line to:
@@ -1126,9 +1132,13 @@ import { SumPipe } from '../../pipes/sum.pipe';
 import { QtyStepper } from '../qty-stepper/qty-stepper';
 import { unitLabel } from '../../utils/units';
 ```
-and its `unitLabel` computed with:
+and its unit-label computed (renamed to `label` so it doesn't shadow the imported `unitLabel` function) with:
 ```typescript
-  unitLabel = computed(() => unitLabel(this.product().unit));
+  label = computed(() => unitLabel(this.product().unit));
+```
+and its template's unit line with:
+```typescript
+      <div class="unit">1 {{ label() }}</div>
 ```
 
 - [ ] **Step 4: Run the full suite**

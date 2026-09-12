@@ -1,4 +1,4 @@
-import { unitLabel } from './units';
+import { UNIT_LABELS, unitLabel } from './units';
 
 describe('unitLabel', () => {
   it('maps API unit codes to Latin Uzbek labels', () => {
@@ -11,5 +11,10 @@ describe('unitLabel', () => {
 
   it('falls back to the raw code', () => {
     expect(unitLabel('box')).toBe('box');
+  });
+
+  it('covers exactly the API unit codes and ignores prototype keys', () => {
+    expect(Object.keys(UNIT_LABELS)).toEqual(['kg', 'sht', 'l', 'g', 'boglam']);
+    expect(unitLabel('toString')).toBe('toString');
   });
 });
