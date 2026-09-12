@@ -178,6 +178,8 @@ describe('Checkout', () => {
     await fixture.whenStable(); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.warn').textContent).toContain('yuklanmadi');
     (fixture.nativeElement.querySelector('button.link') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('yuklanmoqda');
     http.expectOne((r) => r.url.endsWith('/delivery-slots/')).flush(DAYS);
     await fixture.whenStable(); fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('tx-delivery-picker')).toBeTruthy();
@@ -235,5 +237,17 @@ describe('Checkout', () => {
     expect(fixture.nativeElement.textContent).toContain('Saqlangan joylashuv');
     fixture.componentInstance.form.controls.address.setValue('Yangi manzil 19');
     expect(fixture.componentInstance.geo()).toBeNull();
+  });
+
+  it('keeps a reading taken on this page when the address is typed afterwards', async () => {
+    const fixture = await create();
+    Object.defineProperty(navigator, 'geolocation', {
+      value: { getCurrentPosition: (ok: PositionCallback) =>
+        ok({ coords: { latitude: 41.3, longitude: 69.2 } } as GeolocationPosition) },
+      configurable: true,
+    });
+    fixture.componentInstance.locate();
+    fixture.componentInstance.form.controls.address.setValue('Chilonzor 5, 3-podyezd');
+    expect(fixture.componentInstance.geo()).toEqual({ lat: 41.3, lng: 69.2 });
   });
 });

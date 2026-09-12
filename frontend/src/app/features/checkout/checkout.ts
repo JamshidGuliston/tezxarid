@@ -155,6 +155,9 @@ export class Checkout {
       ? { lat: this.customer.info().latitude!, lng: this.customer.info().longitude! }
       : null,
   );
+  /** True while `geo` still holds the coordinates loaded from CustomerStore, i.e. coordinates
+   *  captured for a *previous* address. A reading taken on this page clears it. */
+  private geoFromStore = signal(this.geo() !== null);
   geoMsg = signal<string | null>(null);
 
   form = this.fb.group({
@@ -186,9 +189,14 @@ export class Checkout {
     for (const c of [this.form.controls.name, this.form.controls.address]) {
       if (c.value && c.invalid) c.markAsTouched();
     }
-    // Coordinates belong to the address they were captured for.
+    // Coordinates belong to the address they were captured for. Only *stored* ones are stale here:
+    // a reading taken on this page was captured for the address the user is typing now.
     this.form.controls.address.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      if (this.geo()) { this.geo.set(null); this.geoMsg.set(null); }
+      if (this.geo() && this.geoFromStore()) {
+        this.geo.set(null);
+        this.geoMsg.set(null);
+        this.geoFromStore.set(false);
+      }
     });
     // A server-side field error is stale once the user edits the form.
     this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
@@ -221,6 +229,7 @@ export class Checkout {
       (pos) => {
         // Backend DecimalField(9,6): round to 6 decimals so a raw GPS reading is never rejected.
         this.geo.set({ lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6) });
+        this.geoFromStore.set(false);
         this.geoMsg.set(MSG.geoOk);
       },
       () => this.geoMsg.set(MSG.geoFail),
