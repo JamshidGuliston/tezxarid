@@ -14,22 +14,28 @@ def slot_is_open(slot, date, now):
     """Can an order for `slot` on `date` still be placed at `now`?
 
     Future dates are always open, past dates never; today is open only while
-    `now + lead_minutes` is not past the slot start.
+    `now + lead_minutes` is not past the slot start. `now` is normalized to the
+    project time zone. Caller must separately verify the slot is active, belongs
+    to the city, and that `date` is within DELIVERY_DAYS_AHEAD.
     """
+    now = timezone.localtime(now)
     today = now.date()
     if date != today:
         return date > today
-    start = datetime.combine(date, slot.start_time).replace(tzinfo=now.tzinfo)
+    start = datetime.combine(date, slot.start_time, tzinfo=now.tzinfo)
     return now + timedelta(minutes=slot.lead_minutes) <= start
 
 
 def build_days(city, now=None):
-    """[{date: 'YYYY-MM-DD', slots: [{id, start, end, available}]}] for the next DELIVERY_DAYS_AHEAD days."""
-    now = now or local_now()
-    slots = list(DeliverySlot.objects.filter(city=city, is_active=True).order_by('start_time'))
+    """Today plus the next DELIVERY_DAYS_AHEAD-1 days, each with the city's active slots:
+    [{date: 'YYYY-MM-DD', slots: [{id, start, end, available}]}]."""
+    now = timezone.localtime(now) if now is not None else local_now()
+    today = now.date()
+    slots = list(DeliverySlot.objects.filter(city=city, is_active=True)
+                 .order_by('start_time', 'end_time'))
     days = []
     for offset in range(settings.DELIVERY_DAYS_AHEAD):
-        date = now.date() + timedelta(days=offset)
+        date = today + timedelta(days=offset)
         days.append({
             'date': date.isoformat(),
             'slots': [{

@@ -1,4 +1,5 @@
 from datetime import datetime, time, timedelta
+from datetime import timezone as dt_timezone
 import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -58,3 +59,27 @@ def test_build_days_skips_inactive_and_other_cities(city, slots):
     DeliverySlot.objects.create(city=other, start_time=time(10, 0), end_time=time(13, 0))
     days = build_days(city, now=at(8, 0))
     assert [s['start'] for s in days[0]['slots']] == ['16:00']
+
+
+@pytest.mark.django_db
+def test_build_days_defaults_to_local_now(city, slots, monkeypatch):
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))
+    days = build_days(city)  # no now= → production path via local_now()
+    assert days[0]['date'] == '2026-09-12'
+    assert [s['available'] for s in days[0]['slots']] == [False, True]
+
+
+@pytest.mark.django_db
+def test_build_days_city_without_slots_returns_seven_empty_days(city):
+    days = build_days(city, now=at(8, 0))
+    assert len(days) == 7
+    assert all(d['slots'] == [] for d in days)
+
+
+@pytest.mark.django_db
+def test_slot_is_open_normalizes_utc_now_to_local(city):
+    # 2026-09-12 03:00 local (+05:00) == 2026-09-11 22:00 UTC. A 04:00 slot with lead 120
+    # is already closed for the 12th; a UTC-aware `now` must not turn it into "future date → open".
+    slot = DeliverySlot.objects.create(city=city, start_time=time(4, 0), end_time=time(7, 0))
+    utc_now = at(3, 0).astimezone(dt_timezone.utc)
+    assert slot_is_open(slot, at(3, 0).date(), utc_now) is False
