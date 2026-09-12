@@ -295,9 +295,9 @@ Foydalanuvchi: kun → oraliq → (ism/telefon/manzil) → [Buyurtma berish]
 
 ## 6. Plan 3a qoldiqlari (shu rejada yopiladi)
 
-1. `CityService.init()` → `provideAppInitializer` (`app.config.ts`). `Shell` faqat kategoriyalarni yuklaydi. Init xatosi ushlanadi va loglanadi; ilova baribir render bo'ladi.
+1. `CityService.init()` → `provideAppInitializer` (`app.config.ts`). `Shell` faqat kategoriyalarni yuklaydi. Init xatosi ushlanadi va loglanadi; ilova baribir render bo'ladi. Shahar so'rovi 8 s bilan chegaralanadi (`timeout`), `index.html`da 'Yuklanmoqda…' placeholder turadi.
 2. `UNIT_LABELS` dublikati → `shared/utils/units.ts` (4.8).
-3. `bottom-nav`: Qidiruv / Buyurtmalar / Profil `aria-disabled` va xira; havola emas. 3c/3d ularni yoqadi.
+3. `bottom-nav`: Qidiruv / Buyurtmalar / Profil `disabled` tugmalar sifatida (havola emas, xira, AA kontrast). 3c/3d ularni `routerLink`ga almashtiradi.
 4. "Buyurtma berish" tugmasi ishlaydi (4.6).
 5. Kategoriyalarni ikki marta yuklash (`CatalogStore`) — **3d (qidiruv)** ga qoldiriladi, u yerda mahsulot keshi ham kerak bo'ladi.
 

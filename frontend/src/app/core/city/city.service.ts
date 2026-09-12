@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { CatalogApi } from '../api/catalog-api';
 import { City } from '../api/models/catalog.models';
 
@@ -17,7 +17,7 @@ export class CityService {
   }
 
   async init(): Promise<void> {
-    const cities = await firstValueFrom(this.api.getCities());
+    const cities = await firstValueFrom(this.api.getCities().pipe(timeout(8_000)));
     this.cities.set(cities);
     const storedId = Number(localStorage.getItem(STORAGE_KEY));
     const chosen = cities.find((c) => c.id === storedId) ?? cities[0] ?? null;

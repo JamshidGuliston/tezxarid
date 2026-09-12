@@ -33,7 +33,11 @@ export class Shell {
   categories = signal<Category[]>([]);
 
   constructor() {
-    // The active city is guaranteed by the app initializer (app.config.ts).
-    this.api.getCategories().subscribe((list) => this.categories.set(list));
+    // app.config.ts has already attempted city resolution; if it failed, activeCity is null
+    // and this request will 400 — the catalog then renders empty (see plan carry-overs).
+    this.api.getCategories().subscribe({
+      next: (list) => this.categories.set(list),
+      error: (err) => console.error('Categories failed', err),
+    });
   }
 }
