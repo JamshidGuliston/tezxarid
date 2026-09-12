@@ -17,7 +17,7 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     const http = TestBed.inject(HttpTestingController);
-    http.match((r) => r.url.endsWith('/cities/')).forEach((r) => r.flush([]));
+    http.match((r) => r.url.endsWith('/categories/')).forEach((r) => r.flush([]));
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-shell')).toBeTruthy();

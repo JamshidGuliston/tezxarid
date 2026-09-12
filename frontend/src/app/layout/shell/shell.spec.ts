@@ -15,12 +15,11 @@ describe('Shell', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  it('renders header, sidebar, router-outlet, cart panel and bottom nav', async () => {
+  it('renders header, sidebar categories, router-outlet, cart panel and bottom nav', async () => {
     const fixture = TestBed.createComponent(Shell);
     fixture.detectChanges();
-    http.expectOne('http://localhost:8000/api/cities/').flush([{ id: 1, name: 'Toshkent', slug: 'toshkent' }]);
-    const cat = http.match((r) => r.url.endsWith('/categories/'));
-    cat.forEach((r) => r.flush([]));
+    // City resolution now happens in the app initializer — the shell only loads categories.
+    http.expectOne((r) => r.url.endsWith('/categories/')).flush([{ id: 3, name: 'Mevalar', image: '', sort_order: 1 }]);
     await fixture.whenStable();
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
@@ -28,5 +27,7 @@ describe('Shell', () => {
     expect(el.querySelector('router-outlet')).toBeTruthy();
     expect(el.querySelector('tx-cart-panel')).toBeTruthy();
     expect(el.querySelector('tx-bottom-nav')).toBeTruthy();
+    expect(el.querySelector('.sidebar')!.textContent).toContain('Mevalar');
+    http.verify();
   });
 });

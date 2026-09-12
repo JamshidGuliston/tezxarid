@@ -2,7 +2,6 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { CatalogApi } from '../../core/api/catalog-api';
 import { Category } from '../../core/api/models/catalog.models';
-import { CityService } from '../../core/city/city.service';
 import { AppHeader } from '../../shared/ui/app-header/app-header';
 import { BottomNav } from '../../shared/ui/bottom-nav/bottom-nav';
 import { CartPanel } from '../../shared/ui/cart-panel/cart-panel';
@@ -31,15 +30,10 @@ import { FloatingCart } from '../../shared/ui/floating-cart/floating-cart';
 })
 export class Shell {
   private api = inject(CatalogApi);
-  private city = inject(CityService);
   categories = signal<Category[]>([]);
 
   constructor() {
-    this.city
-      .init()
-      .then(() => {
-        this.api.getCategories().subscribe((list) => this.categories.set(list));
-      })
-      .catch((err) => console.error('City init failed', err));
+    // The active city is guaranteed by the app initializer (app.config.ts).
+    this.api.getCategories().subscribe((list) => this.categories.set(list));
   }
 }
