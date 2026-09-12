@@ -1,6 +1,12 @@
 from django.contrib import admin
-from apps.catalog.admin import CityScopedAdmin
+from apps.catalog.admin import CityScopedAdmin, is_global_admin
+from apps.catalog.models import CityProduct
+from apps.users.models import Address
 from .models import DeliverySlot, Order, OrderItem
+
+
+def _scoped_city_id(request):
+    return getattr(request.user, 'city_id', None)
 
 
 @admin.register(DeliverySlot)
@@ -16,6 +22,12 @@ class OrderItemInline(admin.TabularInline):
     extra = 0
     readonly_fields = ('price_snapshot',)
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # Inlines do not inherit CityScopedAdmin: scope product choices to the admin's city.
+        if db_field.name == 'city_product' and not is_global_admin(request.user):
+            kwargs['queryset'] = CityProduct.objects.filter(city_id=_scoped_city_id(request))
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
 
 @admin.register(Order)
 class OrderAdmin(CityScopedAdmin):
@@ -28,7 +40,23 @@ class OrderAdmin(CityScopedAdmin):
                        'delivery_start', 'delivery_end']
     inlines = [OrderItemInline]
 
-    @admin.display(description='Delivery window')
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # `city` is handled by CityScopedAdmin; the slot and saved-address FKs are city-bound too.
+        if not is_global_admin(request.user):
+            if db_field.name == 'delivery_slot':
+                kwargs['queryset'] = DeliverySlot.objects.filter(city_id=_scoped_city_id(request))
+            elif db_field.name == 'address_ref':
+                kwargs['queryset'] = Address.objects.filter(city_id=_scoped_city_id(request))
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def save_model(self, request, obj, form, change):
+        # Keep the window snapshot in step with the chosen slot (the API does the same in create()).
+        if obj.delivery_slot_id:
+            obj.delivery_start = obj.delivery_slot.start_time
+            obj.delivery_end = obj.delivery_slot.end_time
+        super().save_model(request, obj, form, change)
+
+    @admin.display(description='Delivery window', ordering='delivery_start')
     def delivery_window(self, obj):
         if not obj.delivery_start or not obj.delivery_end:
             return '—'

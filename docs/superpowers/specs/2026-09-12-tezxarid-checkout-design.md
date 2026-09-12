@@ -134,8 +134,8 @@ Xato matnlari ingliz tilida (mavjud API uslubi); foydalanuvchiga ko'rsatiladigan
 ### 3.6 Admin
 
 - `DeliverySlotAdmin(CityScopedAdmin)`: `list_display = ['city', 'start_time', 'end_time', 'lead_minutes', 'is_active']`, `list_filter = ['city', 'is_active']`, `list_editable = ['is_active']`.
-- `CityScopedAdmin` ga **maqsadli yaxshilanish**: `formfield_for_foreignkey` — `city_admin` uchun `city_field` tanlovi faqat o'z shahri bilan cheklanadi (hozir faqat queryset filtrlanadi; yangi yozuv yaratishda boshqa shaharni tanlash mumkin edi). `CityProductAdmin` va `OrderAdmin` ham avtomatik foyda ko'radi.
-- `OrderAdmin`: `list_display` ga `delivery_date`, `delivery_window` (metod: `"16:00–19:00"`); `list_filter` ga `delivery_date`; `readonly_fields` ga `delivery_start`, `delivery_end`.
+- `CityScopedAdmin` ga **maqsadli yaxshilanish**: global admin (superuser yoki `SUPERADMIN` roli) bo'lmagan har qanday xodim uchun `city` tanlovi `user.city_id` bilan cheklanadi (shahar yo'q bo'lsa tanlov bo'sh); `ModelChoiceField` shu queryset bo'yicha tekshirgani uchun qo'lda yuborilgan begona shahar ham rad etiladi. `CityProductAdmin` va `OrderAdmin` ham avtomatik foyda ko'radi.
+- `OrderAdmin`: `list_display` ga `delivery_date`, `delivery_window` (metod: `"16:00–19:00"`); `list_filter` ga `delivery_date`; `readonly_fields` ga `delivery_start`, `delivery_end`; shahar admini uchun `delivery_slot`, `address_ref` va inline `city_product` tanlovlari ham o'z shahri bilan cheklanadi; `save_model` tanlangan oraliqdan `delivery_start/end` snapshotini yangilaydi.
 
 ### 3.7 Backend testlar (pytest)
 

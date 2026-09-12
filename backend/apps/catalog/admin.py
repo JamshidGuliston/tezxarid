@@ -4,29 +4,30 @@ from apps.users.models import User
 from .models import Category, Product, CityProduct
 
 
+def is_global_admin(user):
+    """Superusers and SUPERADMIN-role staff see and edit every city."""
+    return user.is_superuser or getattr(user, 'role', None) == User.Role.SUPERADMIN
+
+
 class CityScopedAdmin(admin.ModelAdmin):
     """Restrict city_admin users to their own city. Override `city_field`."""
     city_field = 'city'
 
-    def _is_city_admin(self, user):
-        return not user.is_superuser and getattr(user, 'role', None) == User.Role.CITY_ADMIN
-
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         user = request.user
-        role = getattr(user, 'role', None)
-        if user.is_superuser or role == User.Role.SUPERADMIN:
+        if is_global_admin(user):
             return qs
-        if role == User.Role.CITY_ADMIN:
-            if user.city_id:
-                return qs.filter(**{self.city_field: user.city_id})
-            return qs.none()  # city_admin with no city sees nothing (safe default)
-        return qs.none()  # unknown/unprivileged staff role sees nothing (safe default)
+        if getattr(user, 'role', None) == User.Role.CITY_ADMIN and user.city_id:
+            return qs.filter(**{self.city_field: user.city_id})
+        return qs.none()  # city_admin without a city, or any other staff role, sees nothing (safe default)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        # A city admin may only create/edit rows for their own city.
-        if db_field.name == self.city_field and self._is_city_admin(request.user):
-            kwargs['queryset'] = City.objects.filter(pk=request.user.city_id)
+        # Anyone who is not a global admin may only create/edit rows for their own city
+        # (a user without a city gets no choices at all). ModelChoiceField validates against
+        # this queryset, so a foreign city id POSTed by hand is rejected too.
+        if db_field.name == self.city_field and not is_global_admin(request.user):
+            kwargs['queryset'] = City.objects.filter(pk=getattr(request.user, 'city_id', None))
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
