@@ -5,9 +5,8 @@ export const routes: Routes = [
   { path: '', loadComponent: () => import('./features/home/home').then((m) => m.Home) },
   { path: 'category/:id', loadComponent: () => import('./features/category/category').then((m) => m.Category) },
   { path: 'cart', loadComponent: () => import('./features/cart/cart-page').then((m) => m.CartPage) },
-  // TODO(Task 14): add `checkout/success` -> OrderSuccess *above* the 'checkout' entry,
-  // so the prefix route never shadows it. The component does not exist yet and a lazy
-  // `import()` of a missing module fails the typecheck (app.config.spec.ts pulls this file in).
+  // 'checkout/success' is listed before 'checkout' so the prefix route never shadows it.
+  { path: 'checkout/success', loadComponent: () => import('./features/checkout/order-success').then((m) => m.OrderSuccess) },
   { path: 'checkout', canActivate: [cartNotEmptyGuard], loadComponent: () => import('./features/checkout/checkout').then((m) => m.Checkout) },
   { path: '**', redirectTo: '' },
 ];
