@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { CartPanel } from './cart-panel';
 import { CartStore } from '../../../core/cart/cart.store';
 import { Product } from '../../../core/api/models/catalog.models';
@@ -14,7 +15,7 @@ describe('CartPanel', () => {
   let cart: CartStore;
   beforeEach(() => {
     localStorage.clear();
-    TestBed.configureTestingModule({ imports: [CartPanel], providers: [CartStore] });
+    TestBed.configureTestingModule({ imports: [CartPanel], providers: [CartStore, provideRouter([])] });
     cart = TestBed.inject(CartStore);
   });
 
@@ -33,7 +34,28 @@ describe('CartPanel', () => {
     const empty = fixture.nativeElement.querySelector('.empty');
     expect(empty).toBeTruthy();
     expect(empty.textContent).toContain('bo');
-    // when empty there are no item rows
     expect(fixture.nativeElement.querySelector('.row')).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('.clear')).toBeFalsy();
+  });
+
+  it('links "Buyurtma berish" to /checkout', async () => {
+    cart.add(product());
+    const fixture = TestBed.createComponent(CartPanel);
+    await fixture.whenStable();
+    const link = fixture.nativeElement.querySelector('a.order') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toContain('/checkout');
+  });
+
+  it('removes one line and clears everything', async () => {
+    cart.add(product());
+    cart.add(product({ city_product_id: 12, name: 'Non', price: '4300.00' }));
+    const fixture = TestBed.createComponent(CartPanel);
+    await fixture.whenStable();
+    (fixture.nativeElement.querySelector('.remove') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(cart.count()).toBe(1);
+    (fixture.nativeElement.querySelector('.clear') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(cart.count()).toBe(0);
   });
 });
