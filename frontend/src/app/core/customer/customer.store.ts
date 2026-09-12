@@ -18,7 +18,11 @@ export class CustomerStore {
 
   save(patch: Partial<CustomerInfo>): void {
     this.info.update((cur) => ({ ...cur, ...patch }));
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.info()));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.info()));
+    } catch {
+      // Storage blocked or full — keep the in-memory value; never abort the caller's flow.
+    }
   }
 
   private load(): CustomerInfo {
