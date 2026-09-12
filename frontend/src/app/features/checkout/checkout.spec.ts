@@ -128,4 +128,112 @@ describe('Checkout', () => {
     fixture.componentInstance.addChip('Eshik oldiga qoldiring');
     expect(fixture.componentInstance.form.controls.comment.value).toBe("Qo'ng'iroq qiling, Eshik oldiga qoldiring");
   });
+
+  const submitBtn = (f: ComponentFixture<Checkout>) => f.nativeElement.querySelector('button.submit') as HTMLButtonElement;
+  const bannerText = (f: ComponentFixture<Checkout>) => (f.nativeElement.querySelector('.banner')?.textContent ?? '') as string;
+
+  async function readyToSubmit() {
+    const fixture = await create();
+    fixture.componentInstance.selection.set({ date: '2026-09-13', slot: DAYS[1].slots[0] });
+    fillForm(fixture);
+    await fixture.whenStable(); fixture.detectChanges();
+    return fixture;
+  }
+
+  it('shows a server field error under the field and the fields banner', async () => {
+    const fixture = await readyToSubmit();
+    submitBtn(fixture).click();
+    http.expectOne((r) => r.url.endsWith('/orders/'))
+      .flush({ phone: ['Enter a valid phone number.'] }, { status: 400, statusText: 'Bad Request' });
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(bannerText(fixture)).toContain("Ma'lumotlarni tekshiring");
+    const errs = Array.from(fixture.nativeElement.querySelectorAll('.err') as NodeListOf<HTMLElement>).map((e) => e.textContent);
+    expect(errs.join(' ')).toContain('Enter a valid phone number.');
+    expect(submitBtn(fixture).disabled).toBe(true);
+  });
+
+  it('shows the network banner and re-enables the button on a 500', async () => {
+    const fixture = await readyToSubmit();
+    submitBtn(fixture).click();
+    http.expectOne((r) => r.url.endsWith('/orders/')).flush('boom', { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(bannerText(fixture)).toContain('Internetni tekshirib');
+    expect(submitBtn(fixture).disabled).toBe(false);
+    expect(submitBtn(fixture).textContent).toContain("19 300 so'm");
+  });
+
+  it('reports an unrecognised 400 as rejected, not as a network problem', async () => {
+    const fixture = await readyToSubmit();
+    submitBtn(fixture).click();
+    http.expectOne((r) => r.url.endsWith('/orders/'))
+      .flush({ city: ['X-City-Id header is required.'] }, { status: 400, statusText: 'Bad Request' });
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(bannerText(fixture)).toContain('qabul qilinmadi');
+  });
+
+  it('offers a retry when slots fail to load, and reloads on click', async () => {
+    const fixture = TestBed.createComponent(Checkout);
+    fixture.detectChanges();
+    http.expectOne((r) => r.url.endsWith('/delivery-slots/')).flush('boom', { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.warn').textContent).toContain('yuklanmadi');
+    (fixture.nativeElement.querySelector('button.link') as HTMLButtonElement).click();
+    http.expectOne((r) => r.url.endsWith('/delivery-slots/')).flush(DAYS);
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('tx-delivery-picker')).toBeTruthy();
+  });
+
+  it('explains when the city has no delivery slots configured', async () => {
+    const fixture = TestBed.createComponent(Checkout);
+    fixture.detectChanges();
+    http.expectOne((r) => r.url.endsWith('/delivery-slots/')).flush([{ date: '2026-09-12', slots: [] }]);
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('hali sozlanmagan');
+    expect(fixture.nativeElement.querySelector('tx-delivery-picker')).toBeNull();
+  });
+
+  it("disables submit with \"Savat bo'sh\" when the cart is emptied while on the page", async () => {
+    const fixture = await readyToSubmit();
+    cart.clear();
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(submitBtn(fixture).disabled).toBe(true);
+    expect(submitBtn(fixture).textContent).toContain("Savat bo'sh");
+  });
+
+  it('rounds the geolocation to 6 decimals and sends it with the order', async () => {
+    const fixture = await readyToSubmit();
+    const geolocation = {
+      getCurrentPosition: (ok: PositionCallback) =>
+        ok({ coords: { latitude: 41.31108123456789, longitude: 69.24056987654321 } } as GeolocationPosition),
+    };
+    Object.defineProperty(navigator, 'geolocation', { value: geolocation, configurable: true });
+    fixture.componentInstance.locate();
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(fixture.componentInstance.geo()).toEqual({ lat: 41.311081, lng: 69.24057 });
+    expect(fixture.nativeElement.textContent).toContain('Joylashuv aniqlandi');
+    submitBtn(fixture).click();
+    const req = http.expectOne((r) => r.url.endsWith('/orders/') && r.method === 'POST');
+    expect(req.request.body.latitude).toBe(41.311081);
+    expect(req.request.body.longitude).toBe(69.24057);
+    req.flush(ORDER, { status: 201, statusText: 'Created' });
+  });
+
+  it('re-enables the page with a notice when navigation to the success page fails', async () => {
+    const fixture = await readyToSubmit();
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockRejectedValue(new Error('chunk failed'));
+    submitBtn(fixture).click();
+    http.expectOne((r) => r.url.endsWith('/orders/')).flush(ORDER, { status: 201, statusText: 'Created' });
+    await fixture.whenStable(); fixture.detectChanges();
+    expect(fixture.componentInstance.submitting()).toBe(false);
+    expect(bannerText(fixture)).toContain('qabul qilindi');
+  });
+
+  it('drops stored coordinates once the address is edited', async () => {
+    TestBed.inject(CustomerStore).save({ address: 'Eski manzil 1', latitude: 41.1, longitude: 69.1 });
+    const fixture = await create();
+    expect(fixture.componentInstance.geo()).toEqual({ lat: 41.1, lng: 69.1 });
+    expect(fixture.nativeElement.textContent).toContain('Saqlangan joylashuv');
+    fixture.componentInstance.form.controls.address.setValue('Yangi manzil 19');
+    expect(fixture.componentInstance.geo()).toBeNull();
+  });
 });

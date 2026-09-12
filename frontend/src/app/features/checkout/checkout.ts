@@ -23,6 +23,9 @@ const MSG = {
   fields: "Ma'lumotlarni tekshiring.",
   geoFail: "Joylashuv aniqlanmadi, manzilni qo'lda kiriting",
   geoOk: 'Joylashuv aniqlandi ✓',
+  rejected: "Buyurtma qabul qilinmadi. Sahifani yangilab qayta urinib ko'ring.",
+  navFailed: "Buyurtma qabul qilindi, lekin sahifa ochilmadi. Bosh sahifaga o'ting.",
+  geoStored: 'Saqlangan joylashuv ishlatiladi',
 };
 
 @Component({
@@ -38,13 +41,13 @@ const MSG = {
       @switch (slotsState()) {
         @case ('loading') { <p class="muted pad">Yetkazish vaqtlari yuklanmoqda…</p> }
         @case ('error') {
-          <div class="warn">Yetkazish vaqtlari yuklanmadi.
+          <div class="warn" role="status">Yetkazish vaqtlari yuklanmadi.
             <button type="button" class="link" (click)="loadSlots()">Qayta urinish</button>
           </div>
         }
         @case ('ready') {
           @if (noSlots()) {
-            <div class="warn">Bu shaharda yetkazish vaqtlari hali sozlanmagan</div>
+            <div class="warn" role="status">Bu shaharda yetkazish vaqtlari hali sozlanmagan</div>
           } @else {
             <tx-delivery-picker [days]="days()" [(selection)]="selection" />
           }
@@ -56,7 +59,8 @@ const MSG = {
           <h3>Ma'lumotlaringiz</h3>
           <label class="field">
             <span>Ismingiz</span>
-            <input formControlName="name" placeholder="Ism va familiya" autocomplete="name" />
+            <input formControlName="name" placeholder="Ism va familiya" autocomplete="name"
+              maxlength="120" [attr.aria-invalid]="fieldError('name') ? true : null" />
             @if (fieldError('name'); as msg) { <small class="err">{{ msg }}</small> }
           </label>
           <label class="field">
@@ -66,11 +70,12 @@ const MSG = {
           </label>
           <label class="field">
             <span>Manzil</span>
-            <input formControlName="address" placeholder="Ko'cha, uy, podyezd, kvartira" autocomplete="street-address" />
+            <input formControlName="address" placeholder="Ko'cha, uy, podyezd, kvartira" autocomplete="street-address"
+              maxlength="500" [attr.aria-invalid]="fieldError('address') ? true : null" />
             @if (fieldError('address'); as msg) { <small class="err">{{ msg }}</small> }
           </label>
           <button type="button" class="geo" (click)="locate()">📍 Joylashuvni aniqlash</button>
-          @if (geoMsg(); as msg) { <small class="muted">{{ msg }}</small> }
+          @if (geoMsg(); as msg) { <small class="muted" role="status">{{ msg }}</small> }
         </section>
 
         <section class="block">
@@ -80,7 +85,8 @@ const MSG = {
               <button type="button" class="chip" (click)="addChip(chip)">{{ chip }}</button>
             }
           </div>
-          <textarea formControlName="comment" rows="2" placeholder="Masalan: 3-podyezd, 5-qavat"></textarea>
+          <textarea formControlName="comment" rows="2" placeholder="Masalan: 3-podyezd, 5-qavat"
+            maxlength="500" aria-label="Kuryerga izoh"></textarea>
         </section>
 
         <section class="block summary">
@@ -174,6 +180,20 @@ export class Checkout {
 
   constructor() {
     this.loadSlots();
+    if (this.geo()) this.geoMsg.set(MSG.geoStored);
+    // Prefilled-but-invalid values must show their errors right away: the button is disabled,
+    // so a submit attempt can never surface them.
+    for (const c of [this.form.controls.name, this.form.controls.address]) {
+      if (c.value && c.invalid) c.markAsTouched();
+    }
+    // Coordinates belong to the address they were captured for.
+    this.form.controls.address.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (this.geo()) { this.geo.set(null); this.geoMsg.set(null); }
+    });
+    // A server-side field error is stale once the user edits the form.
+    this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (this.banner() === MSG.fields) this.banner.set(null);
+    });
   }
 
   loadSlots(): void {
@@ -236,7 +256,10 @@ export class Checkout {
     };
     this.submitting.set(true);
     this.banner.set(null);
-    this.api.createOrder(payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    // No takeUntilDestroyed here on purpose: aborting a create request after the server committed it
+    // would let the user re-submit and pay twice. The stores are root-scoped, so completing after
+    // this component is destroyed is safe.
+    this.api.createOrder(payload).subscribe({
       next: (order) => {
         this.orders.lastOrder.set(order);
         this.customer.save({
@@ -244,7 +267,10 @@ export class Checkout {
           latitude: geo?.lat ?? null, longitude: geo?.lng ?? null,
         });
         this.cart.clear();
-        void this.router.navigate(['/checkout/success']);
+        this.router.navigate(['/checkout/success']).catch(() => {
+          this.submitting.set(false);
+          this.banner.set(MSG.navFailed);
+        });
       },
       error: (err: HttpErrorResponse) => {
         this.submitting.set(false);
@@ -273,6 +299,6 @@ export class Checkout {
         anyField = true;
       }
     }
-    this.banner.set(anyField ? MSG.fields : MSG.network);
+    this.banner.set(anyField ? MSG.fields : MSG.rejected);
   }
 }

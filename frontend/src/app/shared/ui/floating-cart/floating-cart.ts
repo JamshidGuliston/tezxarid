@@ -1,5 +1,7 @@
 import { Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
 import { CartStore } from '../../../core/cart/cart.store';
 import { SumPipe } from '../../pipes/sum.pipe';
 
@@ -8,7 +10,7 @@ import { SumPipe } from '../../pipes/sum.pipe';
   standalone: true,
   imports: [RouterLink, SumPipe],
   template: `
-    @if (cart.count() > 0) {
+    @if (cart.count() > 0 && !onCheckout()) {
       <a class="pill" routerLink="/cart">
         <span class="badge">{{ cart.count() }}</span>
         <span class="total">{{ cart.total() | sum }}</span>
@@ -26,4 +28,14 @@ import { SumPipe } from '../../pipes/sum.pipe';
 })
 export class FloatingCart {
   cart = inject(CartStore);
+  private router = inject(Router);
+  /** Hidden on /checkout: the pill would cover the submit bar and duplicate the summary. */
+  onCheckout = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map((e) => e.urlAfterRedirects.startsWith('/checkout')),
+      startWith(this.router.url.startsWith('/checkout')),
+    ),
+    { initialValue: false },
+  );
 }
