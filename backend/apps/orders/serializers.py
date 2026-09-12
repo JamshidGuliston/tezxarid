@@ -1,9 +1,15 @@
+from datetime import timedelta
 from decimal import Decimal
+from django.conf import settings
+from django.core.validators import RegexValidator
 from django.db import transaction
 from rest_framework import serializers
 from apps.catalog.models import CityProduct
 from apps.users.models import Address
-from .models import Order, OrderItem
+from .models import DeliverySlot, Order, OrderItem
+from .slots import local_now, slot_is_open
+
+PHONE_VALIDATOR = RegexValidator(r'^\+?\d{9,15}$', 'Enter a valid phone number.')
 
 
 class OrderItemInputSerializer(serializers.Serializer):
@@ -23,18 +29,21 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
+    delivery_start = serializers.TimeField(format='%H:%M', read_only=True)
+    delivery_end = serializers.TimeField(format='%H:%M', read_only=True)
 
     class Meta:
         model = Order
         fields = ['id', 'city', 'customer_name', 'phone', 'address', 'latitude',
                   'longitude', 'comment', 'status', 'payment_type', 'total',
+                  'delivery_date', 'delivery_start', 'delivery_end',
                   'created_at', 'items']
         read_only_fields = list(fields)
 
 
 class OrderCreateSerializer(serializers.Serializer):
     customer_name = serializers.CharField(max_length=120)
-    phone = serializers.CharField(max_length=20)
+    phone = serializers.CharField(max_length=20, validators=[PHONE_VALIDATOR])
     payment_type = serializers.ChoiceField(
         choices=Order.PaymentType.choices, default=Order.PaymentType.CASH)
     comment = serializers.CharField(required=False, allow_blank=True, default='')
@@ -42,6 +51,8 @@ class OrderCreateSerializer(serializers.Serializer):
     address = serializers.CharField(max_length=500, required=False, allow_blank=True)
     latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
     longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    delivery_date = serializers.DateField()
+    delivery_slot_id = serializers.IntegerField()
     items = OrderItemInputSerializer(many=True)
 
     def validate_items(self, items):
@@ -59,6 +70,23 @@ class OrderCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     f'{cp.product.name}: quantity must be a multiple of {step}.')
         return items
+
+    def validate(self, attrs):
+        city = self.context['city']
+        now = local_now()
+        today = now.date()
+        date = attrs['delivery_date']
+        last = today + timedelta(days=settings.DELIVERY_DAYS_AHEAD - 1)
+        if not (today <= date <= last):
+            raise serializers.ValidationError({'delivery_date': 'Delivery date out of range.'})
+        try:
+            slot = DeliverySlot.objects.get(pk=attrs['delivery_slot_id'], city=city, is_active=True)
+        except DeliverySlot.DoesNotExist:
+            raise serializers.ValidationError({'delivery_slot_id': 'Delivery slot not available.'})
+        if not slot_is_open(slot, date, now):
+            raise serializers.ValidationError({'delivery_slot_id': 'Delivery slot closed for today.'})
+        attrs['delivery_slot'] = slot
+        return attrs
 
     def _resolve_address(self, validated):
         request = self.context['request']
@@ -83,6 +111,7 @@ class OrderCreateSerializer(serializers.Serializer):
         user = request.user if request.user.is_authenticated else None
         address_text, lat, lng, addr_obj = self._resolve_address(validated_data)
         items = validated_data['items']
+        slot = validated_data['delivery_slot']
         total = sum(i['city_product'].price * i['qty'] for i in items)
         order = Order.objects.create(
             city=city, user=user, address_ref=addr_obj,
@@ -91,6 +120,10 @@ class OrderCreateSerializer(serializers.Serializer):
             address=address_text, latitude=lat, longitude=lng,
             comment=validated_data.get('comment', ''),
             payment_type=validated_data['payment_type'],
+            delivery_slot=slot,
+            delivery_date=validated_data['delivery_date'],
+            delivery_start=slot.start_time,
+            delivery_end=slot.end_time,
             total=total,
         )
         OrderItem.objects.bulk_create([

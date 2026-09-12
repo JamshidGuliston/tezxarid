@@ -102,3 +102,90 @@ def test_delivery_slots_api_returns_days_for_city(city, slots, monkeypatch):
     assert set(body[0]['slots'][0].keys()) == {'id', 'start', 'end', 'available'}
     assert body[0]['slots'][0]['available'] is False
     assert body[0]['slots'][1]['available'] is True
+
+
+@pytest.fixture
+def shop(city):
+    cat = Category.objects.create(name='Mevalar')
+    olma = Product.objects.create(name='Olma', unit=Product.Unit.KG, category=cat)
+    return CityProduct.objects.create(city=city, product=olma, price=19300)
+
+
+def order_payload(cp, **over):
+    base = {
+        'customer_name': 'Aziz', 'phone': '+998901112233', 'address': 'Chilonzor 5',
+        'items': [{'city_product': cp.id, 'qty': 1}],
+    }
+    base.update(over)
+    return base
+
+
+def post_order(city, payload):
+    return APIClient().post('/api/orders/', payload, format='json', HTTP_X_CITY_ID=str(city.id))
+
+
+@pytest.mark.django_db
+def test_create_order_with_slot_snapshots_window(city, slots, shop, monkeypatch):
+    _, evening = slots
+    monkeypatch.setattr('apps.orders.serializers.local_now', lambda: at(8, 0))
+    resp = post_order(city, order_payload(shop, delivery_date='2026-09-12', delivery_slot_id=evening.id))
+    assert resp.status_code == 201, resp.json()
+    body = resp.json()
+    assert body['delivery_date'] == '2026-09-12'
+    assert body['delivery_start'] == '16:00'
+    assert body['delivery_end'] == '19:00'
+    order = Order.objects.get(pk=body['id'])
+    assert order.delivery_slot_id == evening.id
+    assert order.delivery_start == time(16, 0)
+
+
+@pytest.mark.django_db
+def test_create_order_requires_delivery_fields(city, slots, shop):
+    resp = post_order(city, order_payload(shop))
+    assert resp.status_code == 400
+    assert {'delivery_date', 'delivery_slot_id'} <= set(resp.json().keys())
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_slot_closed_for_today(city, slots, shop, monkeypatch):
+    morning, _ = slots
+    monkeypatch.setattr('apps.orders.serializers.local_now', lambda: at(8, 0))  # 08:00+2h > 09:00
+    resp = post_order(city, order_payload(shop, delivery_date='2026-09-12', delivery_slot_id=morning.id))
+    assert resp.status_code == 400
+    assert 'delivery_slot_id' in resp.json()
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_date_out_of_range(city, slots, shop, monkeypatch):
+    _, evening = slots
+    monkeypatch.setattr('apps.orders.serializers.local_now', lambda: at(8, 0))
+    for bad in ('2026-09-11', '2026-09-19'):   # yesterday, today + 7
+        resp = post_order(city, order_payload(shop, delivery_date=bad, delivery_slot_id=evening.id))
+        assert resp.status_code == 400, bad
+        assert 'delivery_date' in resp.json()
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_inactive_or_foreign_slot(city, slots, shop, monkeypatch):
+    morning, _ = slots
+    monkeypatch.setattr('apps.orders.serializers.local_now', lambda: at(8, 0))
+    morning.is_active = False
+    morning.save(update_fields=['is_active'])
+    resp = post_order(city, order_payload(shop, delivery_date='2026-09-13', delivery_slot_id=morning.id))
+    assert resp.status_code == 400 and 'delivery_slot_id' in resp.json()
+
+    other = City.objects.create(name='Samarqand', slug='samarqand')
+    foreign = DeliverySlot.objects.create(city=other, start_time=time(10, 0), end_time=time(13, 0))
+    resp = post_order(city, order_payload(shop, delivery_date='2026-09-13', delivery_slot_id=foreign.id))
+    assert resp.status_code == 400 and 'delivery_slot_id' in resp.json()
+    assert Order.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_create_order_rejects_bad_phone(city, slots, shop, monkeypatch):
+    _, evening = slots
+    monkeypatch.setattr('apps.orders.serializers.local_now', lambda: at(8, 0))
+    resp = post_order(city, order_payload(shop, phone='90 123', delivery_date='2026-09-13',
+                                          delivery_slot_id=evening.id))
+    assert resp.status_code == 400
+    assert 'phone' in resp.json()
