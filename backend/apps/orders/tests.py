@@ -3,6 +3,10 @@ from decimal import Decimal
 from apps.cities.models import City
 from apps.catalog.models import Category, Product, CityProduct
 from apps.orders.models import Order, OrderItem
+from datetime import time
+from django.conf import settings
+from django.db import IntegrityError
+from apps.orders.models import DeliverySlot
 
 
 @pytest.fixture
@@ -65,3 +69,39 @@ def test_order_has_delivery_fields(setup):
     assert order.longitude == Decimal('69.240562')
     assert order.comment == 'Eshik oldida qoldiring'
     assert order.updated_at is not None
+
+
+def test_timezone_is_tashkent():
+    assert settings.TIME_ZONE == 'Asia/Tashkent'
+    assert settings.DELIVERY_DAYS_AHEAD == 7
+
+
+@pytest.mark.django_db
+def test_delivery_slot_defaults_and_str(setup):
+    city, _ = setup
+    slot = DeliverySlot.objects.create(city=city, start_time=time(16, 0), end_time=time(19, 0))
+    assert slot.lead_minutes == 120
+    assert slot.is_active is True
+    assert str(slot) == 'Toshkent 16:00–19:00'
+
+
+@pytest.mark.django_db
+def test_delivery_slot_rejects_end_before_start(setup):
+    city, _ = setup
+    with pytest.raises(IntegrityError):
+        DeliverySlot.objects.create(city=city, start_time=time(19, 0), end_time=time(16, 0))
+
+
+@pytest.mark.django_db
+def test_order_stores_delivery_snapshot(setup):
+    city, cp = setup
+    slot = DeliverySlot.objects.create(city=city, start_time=time(16, 0), end_time=time(19, 0))
+    order = Order.objects.create(
+        city=city, customer_name='Aziz', phone='+998901112233', total=0,
+        delivery_slot=slot, delivery_date='2026-09-13',
+        delivery_start=slot.start_time, delivery_end=slot.end_time)
+    slot.delete()  # SET_NULL must keep the snapshot
+    order.refresh_from_db()
+    assert order.delivery_slot is None
+    assert order.delivery_start == time(16, 0)
+    assert order.delivery_end == time(19, 0)

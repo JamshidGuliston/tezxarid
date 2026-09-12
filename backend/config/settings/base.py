@@ -88,7 +88,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Tashkent'
 
 USE_I18N = True
 
@@ -134,3 +134,6 @@ CORS_ALLOWED_ORIGINS = []
 from corsheaders.defaults import default_headers  # noqa: E402
 
 CORS_ALLOW_HEADERS = (*default_headers, 'x-city-id')
+
+# Delivery slots: how many days (today included) the checkout offers.
+DELIVERY_DAYS_AHEAD = 7

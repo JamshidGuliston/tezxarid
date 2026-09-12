@@ -1,6 +1,29 @@
 from django.db import models
 
 
+class DeliverySlot(models.Model):
+    """A per-city delivery time window customers can pick at checkout."""
+    city = models.ForeignKey('cities.City', on_delete=models.CASCADE, related_name='delivery_slots')
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    lead_minutes = models.PositiveIntegerField(
+        default=120, help_text='Minimum minutes between ordering and the slot start (same-day orders).')
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['city', 'start_time']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(end_time__gt=models.F('start_time')),
+                name='delivery_slot_end_after_start'),
+            models.UniqueConstraint(
+                fields=['city', 'start_time', 'end_time'], name='delivery_slot_unique_window'),
+        ]
+
+    def __str__(self):
+        return f'{self.city} {self.start_time:%H:%M}–{self.end_time:%H:%M}'
+
+
 class Order(models.Model):
     class Status(models.TextChoices):
         NEW = 'new', 'New'
@@ -23,6 +46,11 @@ class Order(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     comment = models.TextField(blank=True, default='')
+    delivery_slot = models.ForeignKey(
+        DeliverySlot, null=True, blank=True, on_delete=models.SET_NULL, related_name='orders')
+    delivery_date = models.DateField(null=True, blank=True)
+    delivery_start = models.TimeField(null=True, blank=True)   # snapshot of the slot
+    delivery_end = models.TimeField(null=True, blank=True)     # snapshot of the slot
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
     payment_type = models.CharField(max_length=10, choices=PaymentType.choices, default=PaymentType.CASH)
     total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
