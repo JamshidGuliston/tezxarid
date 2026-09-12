@@ -69,6 +69,7 @@ def test_create_order_rejects_city_product_from_other_city(shop, slot):
     resp = APIClient().post('/api/orders/', payload, format='json',
                             HTTP_X_CITY_ID=str(tashkent.id))
     assert resp.status_code == 400
+    assert 'items' in resp.json()
     assert Order.objects.count() == 0
 
 
@@ -79,6 +80,7 @@ def test_create_order_requires_city_header(shop, slot):
                'items': [{'city_product': cp_tk.id, 'qty': 1}], **delivery(slot)}
     resp = APIClient().post('/api/orders/', payload, format='json')
     assert resp.status_code == 400
+    assert 'city' in resp.json()
 
 
 @pytest.mark.django_db
@@ -89,6 +91,7 @@ def test_create_order_requires_at_least_one_item(shop, slot):
     resp = APIClient().post('/api/orders/', payload, format='json',
                             HTTP_X_CITY_ID=str(tashkent.id))
     assert resp.status_code == 400
+    assert 'items' in resp.json()
 
 
 @pytest.mark.django_db
@@ -124,6 +127,7 @@ def test_create_order_rejects_unavailable_item(shop, slot):
     resp = APIClient().post('/api/orders/', payload, format='json',
                             HTTP_X_CITY_ID=str(tashkent.id))
     assert resp.status_code == 400
+    assert 'items' in resp.json()
     assert Order.objects.count() == 0
 
 
@@ -143,6 +147,7 @@ def test_create_order_rejects_inactive_product(shop, slot):
     resp = APIClient().post('/api/orders/', payload, format='json',
                             HTTP_X_CITY_ID=str(tashkent.id))
     assert resp.status_code == 400
+    assert 'items' in resp.json()
     assert Order.objects.count() == 0
 
 
@@ -154,6 +159,7 @@ def test_create_order_requires_address(shop, slot):
     resp = APIClient().post('/api/orders/', payload, format='json',
                             HTTP_X_CITY_ID=str(tashkent.id))
     assert resp.status_code == 400
+    assert 'address' in resp.json()
 
 
 @pytest.mark.django_db
@@ -185,6 +191,7 @@ def test_create_order_rejects_qty_not_multiple_of_step(shop, slot):
     resp = APIClient().post('/api/orders/', payload, format='json',
                             HTTP_X_CITY_ID=str(tashkent.id))
     assert resp.status_code == 400
+    assert 'items' in resp.json()
 
 
 @pytest.mark.django_db
@@ -238,3 +245,4 @@ def test_create_order_step_tenth_precision(shop, slot):
         **delivery(slot),
     }, format='json', HTTP_X_CITY_ID=str(tashkent.id))
     assert bad.status_code == 400
+    assert 'items' in bad.json()

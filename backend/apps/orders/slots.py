@@ -10,6 +10,16 @@ def local_now():
     return timezone.localtime()
 
 
+def last_delivery_date(today):
+    """Last date the checkout offers: today + DELIVERY_DAYS_AHEAD - 1 (inclusive)."""
+    return today + timedelta(days=settings.DELIVERY_DAYS_AHEAD - 1)
+
+
+def date_in_horizon(date, today):
+    """Is `date` one of the days the checkout offers (today .. last_delivery_date)?"""
+    return today <= date <= last_delivery_date(today)
+
+
 def slot_is_open(slot, date, now):
     """Can an order for `slot` on `date` still be placed at `now`?
 
@@ -34,8 +44,9 @@ def build_days(city, now=None):
     slots = list(DeliverySlot.objects.filter(city=city, is_active=True)
                  .order_by('start_time', 'end_time'))
     days = []
-    for offset in range(settings.DELIVERY_DAYS_AHEAD):
-        date = today + timedelta(days=offset)
+    date = today
+    last = last_delivery_date(today)
+    while date <= last:
         days.append({
             'date': date.isoformat(),
             'slots': [{
@@ -45,4 +56,5 @@ def build_days(city, now=None):
                 'available': slot_is_open(s, date, now),
             } for s in slots],
         })
+        date += timedelta(days=1)
     return days

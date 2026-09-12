@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from datetime import timezone as dt_timezone
 import pytest
 from django.utils import timezone
@@ -6,7 +6,7 @@ from rest_framework.test import APIClient
 from apps.cities.models import City
 from apps.catalog.models import Category, Product, CityProduct
 from apps.orders.models import DeliverySlot, Order
-from apps.orders.slots import build_days, slot_is_open
+from apps.orders.slots import build_days, date_in_horizon, slot_is_open
 
 
 @pytest.fixture
@@ -76,6 +76,14 @@ def test_build_days_city_without_slots_returns_seven_empty_days(city):
     assert all(d['slots'] == [] for d in days)
 
 
+def test_date_in_horizon_bounds():
+    today = date(2026, 9, 12)
+    assert date_in_horizon(today, today) is True
+    assert date_in_horizon(date(2026, 9, 18), today) is True    # today + 6 = last offered day
+    assert date_in_horizon(date(2026, 9, 19), today) is False
+    assert date_in_horizon(date(2026, 9, 11), today) is False
+
+
 @pytest.mark.django_db
 def test_slot_is_open_normalizes_utc_now_to_local(city):
     # 2026-09-12 03:00 local (+05:00) == 2026-09-11 22:00 UTC. A 04:00 slot with lead 120
@@ -127,7 +135,7 @@ def post_order(city, payload):
 @pytest.mark.django_db
 def test_create_order_with_slot_snapshots_window(city, slots, shop, monkeypatch):
     _, evening = slots
-    monkeypatch.setattr('apps.orders.serializers.local_now', lambda: at(8, 0))
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))
     resp = post_order(city, order_payload(shop, delivery_date='2026-09-12', delivery_slot_id=evening.id))
     assert resp.status_code == 201, resp.json()
     body = resp.json()
@@ -149,43 +157,64 @@ def test_create_order_requires_delivery_fields(city, slots, shop):
 @pytest.mark.django_db
 def test_create_order_rejects_slot_closed_for_today(city, slots, shop, monkeypatch):
     morning, _ = slots
-    monkeypatch.setattr('apps.orders.serializers.local_now', lambda: at(8, 0))  # 08:00+2h > 09:00
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))  # 08:00+2h > 09:00
     resp = post_order(city, order_payload(shop, delivery_date='2026-09-12', delivery_slot_id=morning.id))
     assert resp.status_code == 400
-    assert 'delivery_slot_id' in resp.json()
+    assert resp.json()['delivery_slot_id'] == ['Delivery slot closed for today.']
+    assert Order.objects.count() == 0
 
 
 @pytest.mark.django_db
 def test_create_order_rejects_date_out_of_range(city, slots, shop, monkeypatch):
     _, evening = slots
-    monkeypatch.setattr('apps.orders.serializers.local_now', lambda: at(8, 0))
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))
     for bad in ('2026-09-11', '2026-09-19'):   # yesterday, today + 7
         resp = post_order(city, order_payload(shop, delivery_date=bad, delivery_slot_id=evening.id))
         assert resp.status_code == 400, bad
         assert 'delivery_date' in resp.json()
+    assert Order.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_create_order_accepts_the_last_offered_day(city, slots, shop, monkeypatch):
+    _, evening = slots
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))
+    # 2026-09-18 == today + DELIVERY_DAYS_AHEAD - 1 == the last day GET /api/delivery-slots/ returns
+    resp = post_order(city, order_payload(shop, delivery_date='2026-09-18', delivery_slot_id=evening.id))
+    assert resp.status_code == 201, resp.json()
 
 
 @pytest.mark.django_db
 def test_create_order_rejects_inactive_or_foreign_slot(city, slots, shop, monkeypatch):
     morning, _ = slots
-    monkeypatch.setattr('apps.orders.serializers.local_now', lambda: at(8, 0))
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))
     morning.is_active = False
     morning.save(update_fields=['is_active'])
     resp = post_order(city, order_payload(shop, delivery_date='2026-09-13', delivery_slot_id=morning.id))
-    assert resp.status_code == 400 and 'delivery_slot_id' in resp.json()
+    assert resp.status_code == 400 and resp.json()['delivery_slot_id'] == ['Delivery slot not available.']
 
     other = City.objects.create(name='Samarqand', slug='samarqand')
     foreign = DeliverySlot.objects.create(city=other, start_time=time(10, 0), end_time=time(13, 0))
     resp = post_order(city, order_payload(shop, delivery_date='2026-09-13', delivery_slot_id=foreign.id))
-    assert resp.status_code == 400 and 'delivery_slot_id' in resp.json()
+    assert resp.status_code == 400 and resp.json()['delivery_slot_id'] == ['Delivery slot not available.']
     assert Order.objects.count() == 0
 
 
 @pytest.mark.django_db
-def test_create_order_rejects_bad_phone(city, slots, shop, monkeypatch):
+@pytest.mark.parametrize('phone', ['+998 90 111 22 33', '12345678', '90 123'])
+def test_create_order_rejects_bad_phone(city, slots, shop, monkeypatch, phone):
     _, evening = slots
-    monkeypatch.setattr('apps.orders.serializers.local_now', lambda: at(8, 0))
-    resp = post_order(city, order_payload(shop, phone='90 123', delivery_date='2026-09-13',
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))
+    resp = post_order(city, order_payload(shop, phone=phone, delivery_date='2026-09-13',
                                           delivery_slot_id=evening.id))
-    assert resp.status_code == 400
+    assert resp.status_code == 400, phone
     assert 'phone' in resp.json()
+
+
+@pytest.mark.django_db
+def test_create_order_accepts_phone_without_plus(city, slots, shop, monkeypatch):
+    _, evening = slots
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))
+    resp = post_order(city, order_payload(shop, phone='998901112233', delivery_date='2026-09-13',
+                                          delivery_slot_id=evening.id))
+    assert resp.status_code == 201, resp.json()

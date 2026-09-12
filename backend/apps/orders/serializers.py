@@ -1,13 +1,11 @@
-from datetime import timedelta
 from decimal import Decimal
-from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import transaction
 from rest_framework import serializers
 from apps.catalog.models import CityProduct
 from apps.users.models import Address
 from .models import DeliverySlot, Order, OrderItem
-from .slots import local_now, slot_is_open
+from . import slots
 
 PHONE_VALIDATOR = RegexValidator(r'^\+?\d{9,15}$', 'Enter a valid phone number.')
 
@@ -73,17 +71,16 @@ class OrderCreateSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         city = self.context['city']
-        now = local_now()
+        now = slots.local_now()
         today = now.date()
         date = attrs['delivery_date']
-        last = today + timedelta(days=settings.DELIVERY_DAYS_AHEAD - 1)
-        if not (today <= date <= last):
+        if not slots.date_in_horizon(date, today):
             raise serializers.ValidationError({'delivery_date': 'Delivery date out of range.'})
         try:
             slot = DeliverySlot.objects.get(pk=attrs['delivery_slot_id'], city=city, is_active=True)
         except DeliverySlot.DoesNotExist:
             raise serializers.ValidationError({'delivery_slot_id': 'Delivery slot not available.'})
-        if not slot_is_open(slot, date, now):
+        if not slots.slot_is_open(slot, date, now):
             raise serializers.ValidationError({'delivery_slot_id': 'Delivery slot closed for today.'})
         attrs['delivery_slot'] = slot
         return attrs
