@@ -25,6 +25,6 @@ describe('QtyStepper', () => {
     fixture.componentRef.setInput('unit', 'kg');
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('3');
-    expect(fixture.nativeElement.textContent).toContain('кг');
+    expect(fixture.nativeElement.textContent).toContain('kg');
   });
 });

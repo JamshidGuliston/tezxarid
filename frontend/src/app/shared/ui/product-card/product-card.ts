@@ -2,10 +2,7 @@ import { Component, computed, input, output } from '@angular/core';
 import { Product } from '../../../core/api/models/catalog.models';
 import { SumPipe } from '../../pipes/sum.pipe';
 import { QtyStepper } from '../qty-stepper/qty-stepper';
-
-const UNIT_LABELS: Record<string, string> = {
-  kg: 'кг', sht: 'дона', l: 'литр', g: 'грамм', boglam: 'боғлам',
-};
+import { unitLabel } from '../../utils/units';
 
 @Component({
   selector: 'tx-product-card',
@@ -46,5 +43,5 @@ export class ProductCard {
   dec = output<void>();
 
   bg = computed(() => (this.product().image ? `url(${this.product().image})` : 'none'));
-  unitLabel = computed(() => UNIT_LABELS[this.product().unit] ?? this.product().unit);
+  unitLabel = computed(() => unitLabel(this.product().unit));
 }

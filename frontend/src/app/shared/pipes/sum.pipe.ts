@@ -8,6 +8,6 @@ export class SumPipe implements PipeTransform {
     const [intPart, decPart] = String(rounded).split('.');
     const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     const out = decPart ? `${grouped}.${decPart}` : grouped;
-    return `${out} сум`;
+    return `${out} so'm`;
   }
 }

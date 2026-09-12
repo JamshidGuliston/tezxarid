@@ -24,7 +24,7 @@ describe('CartPanel', () => {
     await fixture.whenStable();
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Olma');
-    expect(text).toContain('19 300 сум');
+    expect(text).toContain("19 300 so'm");
   });
 
   it('shows an empty message when the cart is empty', async () => {

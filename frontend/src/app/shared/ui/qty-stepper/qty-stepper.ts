@@ -1,8 +1,5 @@
 import { Component, input, output } from '@angular/core';
-
-const UNIT_LABELS: Record<string, string> = {
-  kg: 'кг', sht: 'дона', l: 'литр', g: 'грамм', boglam: 'боғлам',
-};
+import { unitLabel } from '../../utils/units';
 
 @Component({
   selector: 'tx-qty-stepper',
@@ -29,6 +26,6 @@ export class QtyStepper {
   dec = output<void>();
 
   label(): string {
-    return UNIT_LABELS[this.unit()] ?? this.unit();
+    return unitLabel(this.unit());
   }
 }

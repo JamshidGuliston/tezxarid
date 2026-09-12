@@ -19,8 +19,8 @@ describe('ProductCard', () => {
     await fixture.whenStable();
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Olma Saltanat');
-    expect(text).toContain('19 300 сум');
-    expect(text).toContain('кг');
+    expect(text).toContain("19 300 so'm");
+    expect(text).toContain('1 kg');
   });
 
   it('emits add when the + button is clicked and qty is 0', async () => {
