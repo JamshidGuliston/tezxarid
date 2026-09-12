@@ -3,6 +3,14 @@ from rest_framework.response import Response
 from apps.common.city import CityScopedAPIView
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderSerializer
+from .slots import build_days
+
+
+class DeliverySlotListView(CityScopedAPIView):
+    """GET: the next DELIVERY_DAYS_AHEAD days with this city's active slots and their availability."""
+
+    def get(self, request):
+        return Response(build_days(self.city))
 
 
 class OrderListCreateView(CityScopedAPIView):

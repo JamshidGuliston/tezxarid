@@ -83,3 +83,22 @@ def test_slot_is_open_normalizes_utc_now_to_local(city):
     slot = DeliverySlot.objects.create(city=city, start_time=time(4, 0), end_time=time(7, 0))
     utc_now = at(3, 0).astimezone(dt_timezone.utc)
     assert slot_is_open(slot, at(3, 0).date(), utc_now) is False
+
+
+@pytest.mark.django_db
+def test_delivery_slots_api_requires_city_header(slots):
+    resp = APIClient().get('/api/delivery-slots/')
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_delivery_slots_api_returns_days_for_city(city, slots, monkeypatch):
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))
+    resp = APIClient().get('/api/delivery-slots/', HTTP_X_CITY_ID=str(city.id))
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 7
+    assert body[0]['date'] == '2026-09-12'
+    assert set(body[0]['slots'][0].keys()) == {'id', 'start', 'end', 'available'}
+    assert body[0]['slots'][0]['available'] is False
+    assert body[0]['slots'][1]['available'] is True
