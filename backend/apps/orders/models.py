@@ -11,7 +11,7 @@ class DeliverySlot(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ['city', 'start_time']
+        ordering = ['city_id', 'start_time']
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(end_time__gt=models.F('start_time')),

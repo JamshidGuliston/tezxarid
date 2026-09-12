@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
                 ('city', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='delivery_slots', to='cities.city')),
             ],
             options={
-                'ordering': ['city', 'start_time'],
+                'ordering': ['city_id', 'start_time'],
             },
         ),
         migrations.AddField(

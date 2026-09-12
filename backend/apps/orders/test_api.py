@@ -35,6 +35,7 @@ def test_create_order_computes_total_server_side(shop):
     body = resp.json()
     assert body['total'] == '38600.00'
     assert body['status'] == 'new'
+    assert body['created_at'].endswith('+05:00')
     order = Order.objects.get(pk=body['id'])
     assert order.items.count() == 1
     assert order.items.first().price_snapshot == cp_tk.price

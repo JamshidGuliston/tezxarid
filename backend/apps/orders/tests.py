@@ -1,12 +1,13 @@
-import pytest
+from datetime import date, time
 from decimal import Decimal
+
+import pytest
+from django.conf import settings
+from django.db import IntegrityError, transaction
+
 from apps.cities.models import City
 from apps.catalog.models import Category, Product, CityProduct
-from apps.orders.models import Order, OrderItem
-from datetime import time
-from django.conf import settings
-from django.db import IntegrityError
-from apps.orders.models import DeliverySlot
+from apps.orders.models import DeliverySlot, Order, OrderItem
 
 
 @pytest.fixture
@@ -88,8 +89,16 @@ def test_delivery_slot_defaults_and_str(setup):
 @pytest.mark.django_db
 def test_delivery_slot_rejects_end_before_start(setup):
     city, _ = setup
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError), transaction.atomic():
         DeliverySlot.objects.create(city=city, start_time=time(19, 0), end_time=time(16, 0))
+
+
+@pytest.mark.django_db
+def test_delivery_slot_rejects_duplicate_window(setup):
+    city, _ = setup
+    DeliverySlot.objects.create(city=city, start_time=time(16, 0), end_time=time(19, 0))
+    with pytest.raises(IntegrityError), transaction.atomic():
+        DeliverySlot.objects.create(city=city, start_time=time(16, 0), end_time=time(19, 0))
 
 
 @pytest.mark.django_db
@@ -105,3 +114,4 @@ def test_order_stores_delivery_snapshot(setup):
     assert order.delivery_slot is None
     assert order.delivery_start == time(16, 0)
     assert order.delivery_end == time(19, 0)
+    assert order.delivery_date == date(2026, 9, 13)

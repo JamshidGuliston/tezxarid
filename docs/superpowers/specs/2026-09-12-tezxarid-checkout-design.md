@@ -69,8 +69,9 @@ Ma'lumotnoma (Telegram Mini App skrinshotlari) darajasidagi soddalik: ro'yxatdan
 | `lead_minutes` | PositiveIntegerField, default 120 | Bugungi kun uchun minimal tayyorlash vaqti |
 | `is_active` | BooleanField, default True | |
 
-- `Meta.ordering = ['city', 'start_time']`
+- `Meta.ordering = ['city_id', 'start_time']`
 - `CheckConstraint`: `end_time > start_time`
+- Yarim tundan o'tuvchi oraliqlar (masalan 22:00–01:00) qo'llab-quvvatlanmaydi — `end_time > start_time` sharti ataylab.
 - `UniqueConstraint`: `(city, start_time, end_time)`
 - `__str__`: `"Toshkent 16:00–19:00"`
 
@@ -91,6 +92,8 @@ Bazada nullable (mavjud yozuvlar uchun migratsiya oson), lekin API orqali yarati
 TIME_ZONE = 'Asia/Tashkent'
 DELIVERY_DAYS_AHEAD = 7   # bugun + 6 kun
 ```
+
+Eslatma: `TIME_ZONE` o'zgargani uchun API javoblaridagi `created_at` endi `+05:00` ofset bilan qaytadi (`...Z` emas); frontend ISO-8601 sifatida o'qiydi.
 
 ### 3.4 `GET /api/delivery-slots/`
 
