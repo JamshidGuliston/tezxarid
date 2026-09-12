@@ -54,8 +54,17 @@ describe('CartPanel', () => {
     (fixture.nativeElement.querySelector('.remove') as HTMLButtonElement).click();
     await fixture.whenStable();
     expect(cart.count()).toBe(1);
+    expect(cart.items()[0].name).toBe('Non');
     (fixture.nativeElement.querySelector('.clear') as HTMLButtonElement).click();
     await fixture.whenStable();
     expect(cart.count()).toBe(0);
+  });
+
+  it('renders a thumbnail from the product image', async () => {
+    cart.add(product({ image: '/media/olma.jpg' }));
+    const fixture = TestBed.createComponent(CartPanel);
+    await fixture.whenStable();
+    const thumb = fixture.nativeElement.querySelector('.thumb') as HTMLElement;
+    expect(thumb.style.backgroundImage).toContain('/media/olma.jpg');
   });
 });

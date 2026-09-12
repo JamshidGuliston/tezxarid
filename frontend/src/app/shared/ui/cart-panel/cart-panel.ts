@@ -47,8 +47,8 @@ import { QtyStepper } from '../qty-stepper/qty-stepper';
     .head { display: flex; align-items: center; justify-content: space-between;
       background: #F60; color: #fff; padding: .75rem 1rem; font-weight: 700; }
     .head small { font-weight: 400; opacity: .9; margin-left: .4rem; }
-    .clear { background: rgba(255,255,255,.2); color: #fff; border: none; border-radius: 999px;
-      padding: .3rem .8rem; font-size: .85rem; cursor: pointer; }
+    .clear { background: rgba(0,0,0,.28); color: #fff; border: none; border-radius: 999px;
+      padding: .3rem .8rem; font-size: .85rem; font-family: inherit; cursor: pointer; }
     .empty { padding: 2rem 1rem; color: #9a9a9a; text-align: center; }
     .list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; }
     .row { display: flex; align-items: center; gap: .6rem; padding: .6rem 1rem; border-bottom: 1px solid #f0f0f0; }
@@ -57,7 +57,8 @@ import { QtyStepper } from '../qty-stepper/qty-stepper';
     .info { flex: 1; min-width: 0; }
     .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .price { color: #555; font-size: .9rem; }
-    .remove { border: none; background: transparent; color: #b0b0b0; font-size: 1rem; cursor: pointer; padding: .25rem; }
+    tx-qty-stepper { flex: 0 0 auto; }
+    .remove { border: none; background: transparent; color: #6b6b6b; font-size: 1rem; cursor: pointer; padding: .25rem; }
     .foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; }
     .grand { font-size: 1.4rem; font-weight: 800; }
     .order { background: #18202b; color: #fff; text-decoration: none; border-radius: 12px;
