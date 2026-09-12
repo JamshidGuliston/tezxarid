@@ -4,7 +4,10 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 /** Strip everything but digits, drop a leading country code, keep at most 9 national digits. */
 export function normalizePhone(raw: string): string {
   let digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('998') && digits.length > 9) digits = digits.slice(3);
+  if (digits.length > 9) {
+    if (digits.startsWith('998')) digits = digits.slice(3);              // country code
+    else if (digits.length === 10 && /^[08]/.test(digits)) digits = digits.slice(1); // trunk 8 / 0
+  }
   return digits.slice(0, 9);
 }
 
@@ -28,11 +31,12 @@ export function formatDigits(digits: string): string {
     </div>
   `,
   styles: [`
-    .phone { display: flex; align-items: center; gap: .5rem; background: #f6f7f9; border-radius: 12px;
-      padding: 0 .9rem; }
+    .phone { display: flex; align-items: center; gap: .5rem; background: #f3f3f3; border-radius: 14px; padding: 0 .9rem; }
+    .phone:focus-within { outline: 2px solid #F60; outline-offset: 2px; }
     .prefix { font-weight: 600; color: #333; }
     input { flex: 1; border: none; background: transparent; padding: .9rem 0; font-size: 1rem; outline: none; }
-    .disabled { opacity: .6; }
+    .disabled { color: #767676; }
+    .disabled .prefix { color: #767676; }
   `],
 })
 export class PhoneInput implements ControlValueAccessor {
@@ -47,13 +51,16 @@ export class PhoneInput implements ControlValueAccessor {
     const el = event.target as HTMLInputElement;
     const digits = normalizePhone(el.value);
     this.digits.set(digits);
+    // Rewrite the DOM too: when the input was rejected (10th digit, a letter) the signal doesn't change, so the [value] binding won't fire.
     el.value = formatDigits(digits);
     // The form only ever sees a complete number or '' (so `required` covers "incomplete").
     this.onChange(digits.length === 9 ? `+998${digits}` : '');
   }
 
   writeValue(value: string | null): void {
-    this.digits.set(normalizePhone(value ?? ''));
+    const digits = normalizePhone(value ?? '');
+    // A value we cannot represent (e.g. a foreign number seeded from storage) is shown as empty.
+    this.digits.set(value && `+998${digits}` !== value ? '' : digits);
   }
 
   registerOnChange(fn: (value: string) => void): void {

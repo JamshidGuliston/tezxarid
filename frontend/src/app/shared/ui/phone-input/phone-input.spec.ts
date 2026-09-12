@@ -7,6 +7,9 @@ describe('PhoneInput helpers', () => {
     expect(normalizePhone('90 123 45 67')).toBe('901234567');
     expect(normalizePhone('9012')).toBe('9012');
     expect(normalizePhone('90123456789')).toBe('901234567');
+    expect(normalizePhone('8 90 123 45 67')).toBe('901234567');
+    expect(normalizePhone('0901234567')).toBe('901234567');
+    expect(normalizePhone('+998 99 890 12 34')).toBe('998901234');
   });
 
   it('formatDigits groups 2-3-2-2', () => {
@@ -44,5 +47,44 @@ describe('PhoneInput', () => {
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
     expect(input.value).toBe('90 123 45 67');
     expect(fixture.nativeElement.textContent).toContain('+998');
+  });
+
+  it('rewrites the DOM value even when the input was rejected', async () => {
+    const fixture = TestBed.createComponent(PhoneInput);
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    input.value = '901234567';
+    input.dispatchEvent(new Event('input'));
+    input.value = '90 123 45 67x';   // 10th character: signal unchanged, DOM must still be normalized
+    input.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    expect(input.value).toBe('90 123 45 67');
+  });
+
+  it('shows nothing for a stored value it cannot represent, and clears on null', async () => {
+    const fixture = TestBed.createComponent(PhoneInput);
+    fixture.componentInstance.writeValue('+79161234567');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    expect(input.value).toBe('');
+    fixture.componentInstance.writeValue('+998901234567');
+    fixture.componentInstance.writeValue(null);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(input.value).toBe('');
+  });
+
+  it('disables the native input and reports touch on blur', async () => {
+    const fixture = TestBed.createComponent(PhoneInput);
+    let touched = false;
+    fixture.componentInstance.registerOnTouched(() => (touched = true));
+    fixture.componentInstance.setDisabledState(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    expect(input.disabled).toBe(true);
+    input.dispatchEvent(new Event('blur'));
+    expect(touched).toBe(true);
   });
 });
