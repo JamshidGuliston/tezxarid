@@ -10,6 +10,7 @@ describe('dates', () => {
     expect(weekdayShort('2026-09-12')).toBe('Sha'); // Saturday
     expect(weekdayShort('2026-09-13')).toBe('Ya');  // Sunday
     expect(weekdayShort('2026-09-14')).toBe('Du');  // Monday
+    expect(weekdayShort('oops')).toBe('');
   });
 
   it('formats day + month', () => {

@@ -19,7 +19,7 @@ export function todayIso(): string {
 }
 
 export function weekdayShort(iso: string): string {
-  return WEEKDAYS_SHORT[parseIsoDate(iso).getDay()];
+  return WEEKDAYS_SHORT[parseIsoDate(iso).getDay()] ?? '';
 }
 
 export function dayNumber(iso: string): number {
@@ -28,5 +28,5 @@ export function dayNumber(iso: string): number {
 
 export function formatDayMonth(iso: string): string {
   const d = parseIsoDate(iso);
-  return `${d.getDate()}-${MONTHS[d.getMonth()]}`;
+  return `${d.getDate()}-${MONTHS[d.getMonth()] ?? ''}`;
 }
