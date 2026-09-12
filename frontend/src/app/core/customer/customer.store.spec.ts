@@ -36,4 +36,11 @@ describe('CustomerStore', () => {
     localStorage.setItem('tezxarid.customer', '{not json');
     expect(new CustomerStore().info().name).toBe('');
   });
+
+  it('drops a stored phone that is not a complete +998 number', () => {
+    localStorage.setItem('tezxarid.customer', JSON.stringify({ name: 'Aziz', phone: '+79161234567' }));
+    const store = new CustomerStore();
+    expect(store.info().name).toBe('Aziz');
+    expect(store.info().phone).toBe('');
+  });
 });

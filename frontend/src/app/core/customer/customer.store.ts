@@ -9,6 +9,7 @@ export interface CustomerInfo {
 }
 
 const STORAGE_KEY = 'tezxarid.customer';
+const PHONE_RE = /^\+998\d{9}$/;
 const EMPTY: CustomerInfo = { name: '', phone: '', address: '', latitude: null, longitude: null };
 
 /** Remembers the guest's contact details between checkouts (Plan 3c seeds it from Telegram). */
@@ -27,7 +28,10 @@ export class CustomerStore {
 
   private load(): CustomerInfo {
     try {
-      return { ...EMPTY, ...(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Partial<CustomerInfo>) };
+      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Partial<CustomerInfo>;
+      const info: CustomerInfo = { ...EMPTY, ...stored };
+      if (!PHONE_RE.test(info.phone)) info.phone = '';   // only a complete +998 number is worth pre-filling
+      return info;
     } catch {
       return { ...EMPTY };
     }

@@ -1,11 +1,14 @@
 import { Component, computed, forwardRef, signal } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
-/** Strip everything but digits, drop a leading country code, keep at most 9 national digits. */
-export function normalizePhone(raw: string): string {
+/** Strip everything but digits, drop a country/trunk prefix from a *pasted* long number, keep at most 9 digits.
+ *  `previous` is the digits already in the field: when the user merely typed past 9 digits, the extra
+ *  keystroke is ignored instead of re-interpreting the number. */
+export function normalizePhone(raw: string, previous = ''): string {
   let digits = raw.replace(/\D/g, '');
   if (digits.length > 9) {
-    if (digits.startsWith('998')) digits = digits.slice(3);              // country code
+    if (previous.length === 9 && digits.startsWith(previous)) return previous;   // typing overflow
+    if (digits.startsWith('998')) digits = digits.slice(3);                       // country code
     else if (digits.length === 10 && /^[08]/.test(digits)) digits = digits.slice(1); // trunk 8 / 0
   }
   return digits.slice(0, 9);
@@ -49,7 +52,7 @@ export class PhoneInput implements ControlValueAccessor {
 
   onInput(event: Event): void {
     const el = event.target as HTMLInputElement;
-    const digits = normalizePhone(el.value);
+    const digits = normalizePhone(el.value, this.digits());
     this.digits.set(digits);
     // Rewrite the DOM too: when the input was rejected (10th digit, a letter) the signal doesn't change, so the [value] binding won't fire.
     el.value = formatDigits(digits);

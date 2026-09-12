@@ -10,6 +10,8 @@ describe('PhoneInput helpers', () => {
     expect(normalizePhone('8 90 123 45 67')).toBe('901234567');
     expect(normalizePhone('0901234567')).toBe('901234567');
     expect(normalizePhone('+998 99 890 12 34')).toBe('998901234');
+    expect(normalizePhone('8812345679', '881234567')).toBe('881234567');
+    expect(normalizePhone('9989012345', '998901234')).toBe('998901234');
   });
 
   it('formatDigits groups 2-3-2-2', () => {
@@ -55,6 +57,8 @@ describe('PhoneInput', () => {
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
     input.value = '901234567';
     input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
     input.value = '90 123 45 67x';   // 10th character: signal unchanged, DOM must still be normalized
     input.dispatchEvent(new Event('input'));
     await fixture.whenStable();
@@ -86,5 +90,23 @@ describe('PhoneInput', () => {
     expect(input.disabled).toBe(true);
     input.dispatchEvent(new Event('blur'));
     expect(touched).toBe(true);
+  });
+
+  it('ignores a 10th digit typed after a complete 88… number', async () => {
+    const fixture = TestBed.createComponent(PhoneInput);
+    const values: string[] = [];
+    fixture.componentInstance.registerOnChange((v: string) => values.push(v));
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    input.value = '881234567';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    input.value = '88 123 45 679';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(input.value).toBe('88 123 45 67');
+    expect(values).toEqual(['+998881234567', '+998881234567']);
   });
 });
