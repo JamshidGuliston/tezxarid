@@ -5,12 +5,16 @@ import { filter, map, startWith } from 'rxjs';
 import { CartStore } from '../../../core/cart/cart.store';
 import { SumPipe } from '../../pipes/sum.pipe';
 
+function isCartOrCheckout(url: string): boolean {
+  return url.startsWith('/cart') || url.startsWith('/checkout');
+}
+
 @Component({
   selector: 'tx-floating-cart',
   standalone: true,
   imports: [RouterLink, SumPipe],
   template: `
-    @if (cart.count() > 0 && !onCheckout()) {
+    @if (cart.count() > 0 && !onCartOrCheckout()) {
       <a class="pill" routerLink="/cart">
         <span class="badge">{{ cart.count() }}</span>
         <span class="total">{{ cart.total() | sum }}</span>
@@ -29,12 +33,12 @@ import { SumPipe } from '../../pipes/sum.pipe';
 export class FloatingCart {
   cart = inject(CartStore);
   private router = inject(Router);
-  /** Hidden on /checkout: the pill would cover the submit bar and duplicate the summary. */
-  onCheckout = toSignal(
+  /** Hidden on /cart (it links there) and /checkout (it would cover the submit bar). */
+  onCartOrCheckout = toSignal(
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-      map((e) => e.urlAfterRedirects.startsWith('/checkout')),
-      startWith(this.router.url.startsWith('/checkout')),
+      map((e) => isCartOrCheckout(e.urlAfterRedirects)),
+      startWith(isCartOrCheckout(this.router.url)),
     ),
     { initialValue: false },
   );

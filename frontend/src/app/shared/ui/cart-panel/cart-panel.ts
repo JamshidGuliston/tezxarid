@@ -56,13 +56,13 @@ import { QtyStepper } from '../qty-stepper/qty-stepper';
       background: #f3f3f3 center/cover no-repeat; }
     .info { flex: 1; min-width: 0; }
     .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .price { color: #555; font-size: .9rem; }
+    .price { color: #555; font-size: .9rem; white-space: nowrap; }
     tx-qty-stepper { flex: 0 0 auto; }
     .remove { border: none; background: transparent; color: #6b6b6b; font-size: 1rem; cursor: pointer; padding: .25rem; }
-    .foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; }
-    .grand { font-size: 1.4rem; font-weight: 800; }
+    .foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1rem; padding: 1rem; }
+    .grand { font-size: 1.3rem; font-weight: 800; white-space: nowrap; }
     .order { background: #18202b; color: #fff; text-decoration: none; border-radius: 12px;
-      padding: .9rem 1.3rem; font-weight: 700; white-space: nowrap; }
+      padding: .85rem 1.1rem; font-weight: 700; white-space: nowrap; }
   `],
 })
 export class CartPanel {
