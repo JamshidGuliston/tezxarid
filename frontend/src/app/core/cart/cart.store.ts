@@ -86,7 +86,12 @@ export class CartStore {
   }
 
   private persist(): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.items()));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.items()));
+    } catch {
+      // Storage blocked or full — the in-memory cart is still correct; never abort the caller
+      // (checkout clears the cart right after a successful order).
+    }
   }
 
   private load(): CartItem[] {

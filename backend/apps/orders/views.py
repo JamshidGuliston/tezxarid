@@ -1,5 +1,6 @@
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from apps.common.city import CityScopedAPIView
 from .models import Order
 from .serializers import OrderCreateSerializer, OrderSerializer
@@ -13,8 +14,15 @@ class DeliverySlotListView(CityScopedAPIView):
         return Response(build_days(self.city))
 
 
+class GuestOrderThrottle(AnonRateThrottle):
+    """Guests can place orders without an account: cap how fast one IP can hit the endpoint."""
+    scope = 'guest_orders'
+    rate = '60/min'
+
+
 class OrderListCreateView(CityScopedAPIView):
     """POST creates a guest/authed order (needs X-City-Id); GET lists the caller's own orders (needs JWT)."""
+    throttle_classes = [GuestOrderThrottle]
 
     def post(self, request):
         serializer = OrderCreateSerializer(

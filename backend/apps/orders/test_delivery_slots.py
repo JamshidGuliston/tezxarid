@@ -218,3 +218,32 @@ def test_create_order_accepts_phone_without_plus(city, slots, shop, monkeypatch)
     resp = post_order(city, order_payload(shop, phone='998901112233', delivery_date='2026-09-13',
                                           delivery_slot_id=evening.id))
     assert resp.status_code == 201, resp.json()
+
+
+@pytest.mark.django_db
+def test_create_order_bounds_anonymous_input(city, slots, shop, monkeypatch):
+    """The endpoint is public: oversized or nonsensical input must be rejected cheaply with a 400."""
+    _, evening = slots
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))
+    ok = dict(delivery_date='2026-09-13', delivery_slot_id=evening.id)
+
+    too_many = [{'city_product': shop.id, 'qty': 1}] * 101
+    resp = post_order(city, order_payload(shop, items=too_many, **ok))
+    assert resp.status_code == 400 and 'items' in resp.json()
+
+    resp = post_order(city, order_payload(shop, comment='x' * 501, **ok))
+    assert resp.status_code == 400 and 'comment' in resp.json()
+
+    resp = post_order(city, order_payload(shop, latitude='999.000000', longitude='69.240562', **ok))
+    assert resp.status_code == 400 and 'latitude' in resp.json()
+
+    resp = post_order(city, order_payload(shop, delivery_date='2026-09-13', delivery_slot_id=0))
+    assert resp.status_code == 400 and 'delivery_slot_id' in resp.json()
+    assert Order.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_guest_order_throttle_is_attached():
+    from apps.orders.views import GuestOrderThrottle, OrderListCreateView
+    assert OrderListCreateView.throttle_classes == [GuestOrderThrottle]
+    assert GuestOrderThrottle.rate == '60/min'

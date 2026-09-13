@@ -48,4 +48,15 @@ describe('CartStore', () => {
     expect(restored.items().length).toBe(1);
     expect(restored.items()[0].cityProductId).toBe(11);
   });
+
+  it('keeps working in memory when storage writes fail', () => {
+    cart.add(product({ step: '1' }));
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError');
+    });
+    expect(() => cart.add(product({ city_product_id: 12, name: 'Non', step: '1' }))).not.toThrow();
+    expect(() => cart.clear()).not.toThrow();
+    expect(cart.count()).toBe(0);
+    spy.mockRestore();
+  });
 });

@@ -1,5 +1,5 @@
 from decimal import Decimal
-from django.core.validators import RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
 from django.db import transaction
 from rest_framework import serializers
 from apps.catalog.models import CityProduct
@@ -8,6 +8,9 @@ from .models import DeliverySlot, Order, OrderItem
 from . import slots
 
 PHONE_VALIDATOR = RegexValidator(r'^\+?\d{9,15}$', 'Enter a valid phone number.')
+MAX_ORDER_ITEMS = 100   # the endpoint is anonymous: bound the per-request work
+LAT_VALIDATORS = [MinValueValidator(Decimal('-90')), MaxValueValidator(Decimal('90'))]
+LNG_VALIDATORS = [MinValueValidator(Decimal('-180')), MaxValueValidator(Decimal('180'))]
 
 
 class OrderItemInputSerializer(serializers.Serializer):
@@ -44,14 +47,16 @@ class OrderCreateSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20, validators=[PHONE_VALIDATOR])
     payment_type = serializers.ChoiceField(
         choices=Order.PaymentType.choices, default=Order.PaymentType.CASH)
-    comment = serializers.CharField(required=False, allow_blank=True, default='')
+    comment = serializers.CharField(max_length=500, required=False, allow_blank=True, default='')
     address_id = serializers.IntegerField(required=False)
     address = serializers.CharField(max_length=500, required=False, allow_blank=True)
-    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
-    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True)
+    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True,
+                                        validators=LAT_VALIDATORS)
+    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True,
+                                         validators=LNG_VALIDATORS)
     delivery_date = serializers.DateField()
-    delivery_slot_id = serializers.IntegerField()
-    items = OrderItemInputSerializer(many=True)
+    delivery_slot_id = serializers.IntegerField(min_value=1)
+    items = OrderItemInputSerializer(many=True, max_length=MAX_ORDER_ITEMS)
 
     def validate_items(self, items):
         if not items:
