@@ -2933,6 +2933,43 @@ git commit -m "docs(plan): Plan 3b post-implementation notes"
 - `CustomerStore.info()` shape `{name, phone, address, latitude, longitude}` (Task 9) is what `Checkout` reads and saves (Task 13).
 - `OrderStore.lastOrder` (Task 9) is written by `Checkout` (Task 13) and read by `OrderSuccess` (Task 14).
 - `cartNotEmptyGuard` (Task 9) is referenced by `app.routes.ts` (Task 13).
-- `unitLabel()` (Task 6) is used by `qty-stepper` and `product-card`; `formatDayMonth/weekdayShort/dayNumber/todayIso` (Task 10) are used by `DeliveryPicker` and `OrderSuccess`.
+- `unitLabel()` (Task 6) is used by `qty-stepper` and `product-card`; `formatDayMonth/weekdayShort/dayNumber` (Task 10) are used by `DeliveryPicker` and `OrderSuccess` (`todayIso`/`toIsoDate` are exported helpers with their own spec but no component consumer after the "Bugun = server's first day" fix).
 - Backend: `local_now`/`slot_is_open`/`build_days` (Task 2) are imported by `views.py` (Task 3) and `serializers.py` (Task 4); tests monkeypatch `apps.orders.slots.local_now` for the view (module-level call inside `build_days`) and `apps.orders.serializers.local_now` for the serializer (imported name) — both correct targets.
 - `DeliverySlotAdmin` / `OrderAdmin.delivery_window` (Task 5) match `test_admin.py` (Task 5).
+
+---
+
+## Post-implementation notes (2026-09-13)
+
+**Executed** subagent-driven on branch `feat/plan-3b-checkout` (implementer → spec review → code-quality review per task, fixes re-reviewed). 29 commits.
+
+**Verified:**
+- Backend: **94 pytest** (62 → 94). Frontend: **86 Vitest** in 25 spec files (26 → 86). Production build clean: initial 273.6 kB raw / 77.2 kB transfer; lazy chunks `checkout` 52.1 kB, `order-success` 2.8 kB, `category` 3.7 kB, `home` 2.1 kB.
+- API smoke against the dev server + seeded SQLite: `/api/cities/`, 7-day `/api/delivery-slots/`, `/api/products/`; `POST /api/orders/` → 201 with the snapshotted window and `created_at` in `+05:00`; bad phone → 400 `{"phone": …}`; CORS preflight from `http://localhost:4200` allows `x-city-id`.
+- Browser smoke (headless Edge via `playwright-core`, 1280×860 and 390×844): category → `+` ×2 → cart panel (2 items, Tozalash) → checkout: label progression "Yetkazish vaqtini tanlang" → "Buyurtma berish · 22 150 so'm", "Bugun" chip, slot select, phone mask `90 123 45 67`, geolocation "Joylashuv aniqlandi ✓", chip appends the comment, submit → success page (№, `13-sentabr, 10:00 – 14:00`, address, total), heading focused, cart panel empty; Back → guard → home. Mobile: floating pill → `/cart` → checkout; pill hidden on checkout; sticky submit bar sits 25 px above the bottom nav (no overlap). Guards: `/checkout` with an empty cart and `/checkout/success` without an order both land on `/`. No console errors.
+- Not exercised in a browser: the Django admin as `tk_admin` (city-limited dropdowns, `save_model` snapshot) — covered by `apps/orders/test_admin.py` only.
+
+**Found & fixed beyond the plan (review/smoke):**
+- Backend: `DeliverySlot.Meta.ordering = ['city_id', …]` (no implicit JOIN); `slot_is_open` normalizes `now` to the project tz; one horizon helper (`date_in_horizon`) and one clock (`slots.local_now`) shared by `build_days` and the serializer; admin scoping fail-closed for every non-global staff role and extended to `delivery_slot`, `address_ref` and the inline `city_product`; `OrderAdmin.save_model` syncs the window snapshot; `created_at` `+05:00` pinned by a test; unique-window and boundary tests.
+- Frontend: app-initializer failure path tested, cities request bounded (8 s) with an `index.html` placeholder; AA contrast on nav/cart/checkout controls; `DeliveryPicker` clears a stale selection itself, `aria-pressed`, "Bugun" from the server's first day; `PhoneInput` overflow-safe normalization (trunk `8`/`0` on paste only), focus ring, rejects unrepresentable stored values; `CustomerStore` never throws on write and blanks non-`+998` phones; `Checkout` handles a failed success navigation, does not abort the order POST on destroy, drops *stored* coordinates on address edit, distinguishes an unrecognised 400 (`MSG.rejected`) from a network error, requires a non-empty cart; floating cart hidden on `/cart` and `/checkout`; `orderExistsGuard` instead of a constructor redirect (no Back-button trap); success heading focused on arrival; cart panel price/total never wrap.
+- Plan deviations: Task 13 had to defer the `checkout/success` route to Task 14 (the lazy import is type-checked via `app.config.spec.ts`); Task 6 specs were rewritten to be non-vacuous (`sht → dona`).
+
+**Final branch review (whole range `main..HEAD`):** no merge-blocking defect; two cheap hardenings applied before integration — `CartStore.persist()` never throws (a storage failure after a successful order used to strand the user on "Yuborilmoqda…"), and the anonymous `POST /api/orders/` is bounded (`items` ≤ 100, `comment` ≤ 500, `delivery_slot_id ≥ 1`, lat/lng ranges, `GuestOrderThrottle` 60/min per IP). Deploy gates found (pre-existing, not part of 3b): the production build has no `fileReplacements`, so `environment.prod.ts` is never used; `config/settings/prod.py` needs a Postgres driver in `requirements.txt` and the `SECURE_*` settings — add `manage.py check --deploy --settings=config.settings.prod` to CI.
+
+**Dev environment:** `venv/` recreated at the repo root (Python 3.13, requirements.txt); `frontend/node_modules` via `npm ci`. Dev SQLite migrated through `orders.0003_delivery_slots` and seeded (2 cities, 3 categories, 6 products, 4+1 slots, users `admin`/`admin` superadmin and `tk_admin`/`tk_admin` city admin — **dev only**). Run Vitest from PowerShell on this machine (Git Bash fork issue).
+
+**Carry-overs (3c/3d or ops):**
+1. City init failure is silent (empty catalog): add a visible banner + "Qayta urinish" (`cityError` signal in the initializer's catch).
+2. `Cache-Control: no-store` / `Vary: X-City-Id` for city-scoped endpoints once a proxy/CDN exists (`CityScopedAPIView.finalize_response`, project-wide).
+3. Index `Order(city, delivery_date)` before `0003` ships to production (free now, `AddIndexConcurrently` later).
+4. Admin: `Order.user` FK still unscoped; `OrderItemInline.city_product` will need `autocomplete_fields` as the catalog grows.
+5. Brand CTA contrast (white on `#F60` ≈ 2.9:1) — a token decision across ~10 files; `--brand` in `styles.scss` is unused.
+6. Checkout submit bar `bottom: 2.6rem` is coupled to the bottom-nav height — move to a CSS custom property when the nav gains icons (3c/3d).
+7. `Product.unit` / `Order.status` / `payment_type` as string-literal unions; prettier is configured but not enforced (41 files).
+8. `PhoneInput` caret jumps to the end on mid-string edits (9-digit field, acceptable).
+9. From 3a: categories fetched twice on cold load — `CatalogStore` in 3d.
+10. `Order.delivery_*` are non-nullable in TS but nullable in the DB — widen when 3c reads order history (pre-`0003` rows).
+11. `OrderStore.lastOrder` is never cleared, so `/checkout/success` stays reachable in-session with the last order; clear it on the next `/checkout` entry.
+12. No routing-level test through the real `routes` (guards are unit-tested in isolation) — add a `RouterTestingHarness` spec when 3c adds auth guards.
+13. Clear the persisted cart when the active city changes (3c city switcher); `OrderItemInline` "Add another" 500s because `price_snapshot` is readonly and required (pre-existing).
+14. Deploy gates: `fileReplacements` for `environment.prod.ts`; Postgres driver + `SECURE_*` settings in `prod.py`; `check --deploy` in CI.

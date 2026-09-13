@@ -207,9 +207,10 @@ export interface Order {
 ### 4.3 Servislar va storelar
 
 - **`OrdersApi`**: `getDeliverySlots(): Observable<DeliveryDay[]>` → `GET {apiUrl}/delivery-slots/`; `createOrder(p): Observable<Order>` → `POST {apiUrl}/orders/`. `X-City-Id` interceptor orqali.
-- **`CustomerStore`**: `name`, `phone`, `address`, `latitude`, `longitude` signallari; `save(partial)`; `effect` orqali localStorage. 3c'da Telegram'dan to'ldiriladi.
-- **`OrderStore`**: `lastOrder` signal. Success sahifasi shundan o'qiydi; sahifa qayta yuklansa `null` → `/` ga qaytadi.
-- **`cartNotEmptyGuard`** (`CanActivateFn`): `CartStore.count() === 0` → `router.createUrlTree(['/'])`.
+- **`CustomerStore`**: bitta `info` signali (`{name, phone, address, latitude, longitude}`); `save(patch)` birlashtirib localStorage'ga yozadi (yozuv xatosi yutiladi, xotiradagi qiymat qoladi); yuklashda `+998` bo'lmagan telefon bo'shatiladi. 3c'da Telegram'dan to'ldiriladi.
+- **`OrderStore`**: `lastOrder` signal (faqat xotira). Success sahifasi shundan o'qiydi.
+- **`cartNotEmptyGuard`** (`CanActivateFn`, `/checkout`): `CartStore.count() === 0` → `router.createUrlTree(['/'])`.
+- **`orderExistsGuard`** (`CanActivateFn`, `/checkout/success`): `lastOrder()` bo'lmasa (qayta yuklash, to'g'ridan-to'g'ri kirish) → `/`. Guard bo'lgani uchun tarix yozuvi almashtiriladi, "Orqaga" tugmasi ishlayveradi.
 
 ### 4.4 Checkout sahifasi (`/checkout`)
 
@@ -221,10 +222,11 @@ Yuqoridan pastga bitta scroll:
 4. **Kuryerga izoh** (ixtiyoriy) — chiplar "Qo'ng'iroq qiling", "Eshik oldiga qoldiring" (bosilsa matnga qo'shiladi, takror qo'shilmaydi) + textarea.
 5. **Jami** — `Mahsulotlar` qatori va `Jami` (hozir teng; keyin yetkazish narxi qatori qo'shiladi).
 6. **Pastki yopishqoq tugma** (mobil: `position: sticky; bottom`), holatlar:
+   - savat bo'sh (desktop panelidan tozalangan) → `Savat bo'sh` (o'chiq)
    - oraliq tanlanmagan → `Yetkazish vaqtini tanlang` (o'chiq)
    - oraliq bor, forma noto'g'ri → `Ma'lumotlarni to'ldiring` (o'chiq)
    - hammasi to'g'ri → `Buyurtma berish · 14 900 so'm`
-   - yuborilmoqda → spinner, o'chiq
+   - yuborilmoqda → `Yuborilmoqda…` matni, o'chiq
 
 Forma: Angular Reactive Forms (`@angular/forms` allaqachon o'rnatilgan). Boshlang'ich qiymatlar `CustomerStore`dan.
 
