@@ -21,7 +21,9 @@ if 'TELEGRAM_BOT_TOKEN' not in os.environ:
 TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 
 DEBUG = False
-ALLOWED_HOSTS = _env_list('DJANGO_ALLOWED_HOSTS', 'tezxarid.uz,www.tezxarid.uz')
+# The public backend host. Override with DJANGO_ALLOWED_HOSTS when the domain changes
+# (comma-separated); the frontend's apiUrl lives in frontend/src/environments/environment.prod.ts.
+ALLOWED_HOSTS = _env_list('DJANGO_ALLOWED_HOSTS', 'xorjin.toyxat.uz')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
