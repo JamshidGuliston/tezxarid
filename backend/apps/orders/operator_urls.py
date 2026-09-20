@@ -1,6 +1,6 @@
 from django.urls import path
-from .operator_views import (OrderDetailView, OrderEventView, OrderItemsView, OrderListView, OrderStageView,
-                             StageListView)
+from .operator_views import (OperatorProductView, OrderDetailView, OrderEventView, OrderItemsView, OrderListView,
+                             OrderStageView, StageListView)
 
 app_name = 'operator-orders'
 
@@ -11,4 +11,5 @@ urlpatterns = [
     path('orders/<int:pk>/items/', OrderItemsView.as_view(), name='order-items'),
     path('orders/<int:pk>/stage/', OrderStageView.as_view(), name='order-stage'),
     path('orders/<int:pk>/events/', OrderEventView.as_view(), name='order-events'),
+    path('products/', OperatorProductView.as_view(), name='products'),
 ]

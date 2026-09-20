@@ -3,6 +3,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from rest_framework import status
 from rest_framework.response import Response
+from apps.catalog.models import CityProduct
 from apps.common.city import OperatorAPIView
 from .models import Order, OrderEvent, OrderItem, OrderStage
 from .operator_serializers import (EventCreateSerializer, OperatorEventSerializer, OperatorItemsSerializer,
@@ -163,3 +164,17 @@ class OrderEventView(OrderDetailView):
                                           kind=serializer.validated_data['kind'],
                                           note=serializer.validated_data['note'])
         return Response(OperatorEventSerializer(event).data, status=status.HTTP_201_CREATED)
+
+
+class OperatorProductView(OperatorAPIView):
+    """GET: the city's available products, for the item editor."""
+
+    def get(self, request):
+        search = (request.query_params.get('search') or '').strip()
+        qs = (CityProduct.objects.filter(city=self.city, is_available=True, product__is_active=True)
+              .select_related('product').order_by('product__name'))
+        if search:
+            qs = qs.filter(product__name__icontains=search)
+        rows = [{'city_product_id': cp.id, 'name': cp.product.name, 'unit': cp.product.unit,
+                 'step': str(cp.product.step), 'price': str(cp.price)} for cp in qs[:50]]
+        return Response(rows)
