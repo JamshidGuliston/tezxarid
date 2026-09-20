@@ -14,6 +14,7 @@ export const routes: Routes = [
     // Tasks 8, 9 and 12 append their own child routes (board, detail, customers, customer detail).
     children: [
       { path: '', loadComponent: () => import('./features/order-admin/orders-board').then((m) => m.OrdersBoard) },
+      { path: 'orders/:id', loadComponent: () => import('./features/order-admin/order-detail').then((m) => m.OrderDetail) },
     ],
   },
   {
