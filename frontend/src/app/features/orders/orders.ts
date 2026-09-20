@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { OrdersApi } from '../../core/api/orders-api';
 import { Order } from '../../core/api/models/order.models';
 import { AuthService } from '../../core/auth/auth.service';
@@ -16,9 +16,9 @@ type LoadState = 'loading' | 'ready' | 'error';
   template: `
     <div class="page">
       <h2 class="title">Buyurtmalar</h2>
-      <div class="tabs" role="tablist">
-        <button type="button" role="tab" [attr.aria-selected]="tab() === 'active'" [class.on]="tab() === 'active'" (click)="tab.set('active')">Faol</button>
-        <button type="button" role="tab" [attr.aria-selected]="tab() === 'past'" [class.on]="tab() === 'past'" (click)="tab.set('past')">Tarix</button>
+      <div class="tabs" role="group" aria-label="Buyurtma turi">
+        <button type="button" [attr.aria-pressed]="tab() === 'active'" [class.on]="tab() === 'active'" (click)="tab.set('active')">Faol</button>
+        <button type="button" [attr.aria-pressed]="tab() === 'past'" [class.on]="tab() === 'past'" (click)="tab.set('past')">Tarix</button>
       </div>
       @if (isLocal()) { <p class="note">Bu qurilmada berilgan buyurtmalar. Holat yangilanmaydi.</p> }
       @switch (state()) {
@@ -65,7 +65,11 @@ export class Orders {
   shown = computed(() => this.source().filter((o) => (this.tab() === 'active' ? isActiveStatus(o.status) : !isActiveStatus(o.status))));
 
   constructor() {
-    if (!this.isLocal()) this.load();
+    // Sign-out mid-visit (failed token refresh) or sign-in must re-sync the source and the load state.
+    effect(() => {
+      if (this.isLocal()) this.state.set('ready');
+      else this.load();
+    });
   }
 
   load(): void {

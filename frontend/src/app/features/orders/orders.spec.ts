@@ -42,7 +42,7 @@ describe('Orders', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('tx-order-card').length).toBe(2);
-    const tabs = fixture.nativeElement.querySelectorAll('[role="tab"]') as NodeListOf<HTMLButtonElement>;
+    const tabs = fixture.nativeElement.querySelectorAll('.tabs button') as NodeListOf<HTMLButtonElement>;
     tabs[1].click();
     await fixture.whenStable();
     fixture.detectChanges();
@@ -63,5 +63,55 @@ describe('Orders', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain("Faol buyurtma yo'q");
+  });
+
+  it('splits guest orders into Faol and Tarix tabs', async () => {
+    const history = TestBed.inject(OrderHistoryStore);
+    history.add(order(1, 'new'));
+    history.add(order(2, 'done'));
+    const fixture = TestBed.createComponent(Orders);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('tx-order-card').length).toBe(1);
+    const tabs = fixture.nativeElement.querySelectorAll('.tabs button') as NodeListOf<HTMLButtonElement>;
+    tabs[1].click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('tx-order-card').length).toBe(1);
+  });
+
+  it("shows Tarix bo'sh for a guest with no orders", async () => {
+    const fixture = TestBed.createComponent(Orders);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const tabs = fixture.nativeElement.querySelectorAll('.tabs button') as NodeListOf<HTMLButtonElement>;
+    tabs[1].click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain("Tarix bo'sh");
+  });
+
+  it('re-syncs to guest state when the session is cleared mid-load (failed token refresh)', async () => {
+    TestBed.inject(TokenStore).set({ access: 'a', refresh: 'r' });
+    const fixture = TestBed.createComponent(Orders);
+    fixture.detectChanges();
+    const req = http.expectOne((r) => r.url.endsWith('/orders/'));
+    TestBed.inject(TokenStore).clear();
+    req.flush('unauthorized', { status: 401, statusText: 'Unauthorized' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Holat yangilanmaydi');
+    expect(fixture.nativeElement.textContent).not.toContain('yuklanmadi');
+  });
+
+  it('starts loading automatically after signing in mid-visit', async () => {
+    const fixture = TestBed.createComponent(Orders);
+    fixture.detectChanges();
+    http.expectNone((r) => r.url.endsWith('/orders/'));
+    TestBed.inject(TokenStore).set({ access: 'a', refresh: 'r' });
+    fixture.detectChanges();
+    http.expectOne((r) => r.url.endsWith('/orders/')).flush([order(1, 'new')]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('tx-order-card').length).toBe(1);
+    expect(fixture.nativeElement.textContent).not.toContain('Holat yangilanmaydi');
   });
 });

@@ -275,6 +275,7 @@ export class Checkout {
     this.api.createOrder(payload).subscribe({
       next: (order) => {
         this.orders.lastOrder.set(order);
+        // Also for signed-in users: if the session lapses later, the device history is all /orders can show.
         this.history.add(order);
         this.customer.save({
           name: payload.customer_name, phone: payload.phone, address: payload.address,
