@@ -25,7 +25,7 @@ def test_order_defaults(setup):
     order = Order.objects.create(
         city=city, customer_name='Aziz', phone='+998901112233', total=19300,
     )
-    assert order.status == Order.Status.NEW
+    assert order.stage is None
     assert order.payment_type == Order.PaymentType.CASH
     assert str(order).startswith('Order #')
 

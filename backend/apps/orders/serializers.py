@@ -5,8 +5,9 @@ from rest_framework import serializers
 from apps.catalog.models import CityProduct
 from apps.common.validators import PHONE_VALIDATOR
 from apps.users.models import Address
-from .models import DeliverySlot, Order, OrderItem
+from .models import DeliverySlot, Order, OrderItem, OrderStage
 from . import slots
+from .stages import stage_positions
 
 MAX_ORDER_ITEMS = 100   # the endpoint is anonymous: bound the per-request work
 LAT_VALIDATORS = [MinValueValidator(Decimal('-90')), MaxValueValidator(Decimal('90'))]
@@ -32,14 +33,36 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     delivery_start = serializers.TimeField(format='%H:%M', read_only=True)
     delivery_end = serializers.TimeField(format='%H:%M', read_only=True)
+    status = serializers.CharField(source='stage.code', read_only=True, default='new')
+    status_label = serializers.CharField(source='stage.name', read_only=True, default='Yangi')
+    status_step = serializers.SerializerMethodField()
+    status_total = serializers.SerializerMethodField()
+    is_final = serializers.BooleanField(source='stage.is_final', read_only=True, default=False)
+    is_canceled = serializers.BooleanField(source='stage.is_canceled', read_only=True, default=False)
 
     class Meta:
         model = Order
         fields = ['id', 'city', 'customer_name', 'phone', 'address', 'latitude',
-                  'longitude', 'comment', 'status', 'payment_type', 'total',
+                  'longitude', 'comment', 'status', 'status_label', 'status_step', 'status_total',
+                  'is_final', 'is_canceled', 'payment_type', 'total',
                   'delivery_date', 'delivery_start', 'delivery_end',
                   'created_at', 'items']
         read_only_fields = list(fields)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._stage_cache = {}          # one lookup per city, not per order
+
+    def _position(self, obj):
+        if obj.stage_id is None or obj.stage.is_canceled:
+            return (0, len(stage_positions(obj.city_id, self._stage_cache)))
+        return stage_positions(obj.city_id, self._stage_cache).get(obj.stage_id, (0, 0))
+
+    def get_status_step(self, obj) -> int:
+        return self._position(obj)[0]
+
+    def get_status_total(self, obj) -> int:
+        return self._position(obj)[1]
 
 
 class OrderCreateSerializer(serializers.Serializer):
@@ -127,6 +150,7 @@ class OrderCreateSerializer(serializers.Serializer):
             delivery_start=slot.start_time,
             delivery_end=slot.end_time,
             total=total,
+            stage=OrderStage.initial_for(city),
         )
         if user is not None and not user.phone:
             user.phone = validated_data['phone']

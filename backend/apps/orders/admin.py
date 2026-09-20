@@ -2,7 +2,7 @@ from django.contrib import admin
 from apps.catalog.admin import CityScopedAdmin, is_global_admin
 from apps.catalog.models import CityProduct
 from apps.users.models import Address
-from .models import DeliverySlot, Order, OrderItem
+from .models import DeliverySlot, Order, OrderItem, OrderStage
 
 
 def _scoped_city_id(request):
@@ -29,12 +29,20 @@ class OrderItemInline(admin.TabularInline):
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
+@admin.register(OrderStage)
+class OrderStageAdmin(CityScopedAdmin):
+    city_field = 'city'
+    list_display = ['city', 'sort_order', 'name', 'code', 'is_initial', 'is_final', 'is_canceled', 'is_active']
+    list_editable = ['sort_order', 'name', 'is_active']
+    list_filter = ['city', 'is_active']
+
+
 @admin.register(Order)
 class OrderAdmin(CityScopedAdmin):
     city_field = 'city'
-    list_display = ['id', 'city', 'customer_name', 'phone', 'status', 'payment_type',
+    list_display = ['id', 'city', 'customer_name', 'phone', 'stage', 'payment_type',
                     'total', 'delivery_date', 'delivery_window', 'address', 'created_at']
-    list_filter = ['city', 'status', 'payment_type', 'delivery_date']
+    list_filter = ['city', 'stage', 'payment_type', 'delivery_date']
     search_fields = ['customer_name', 'phone', 'address']
     readonly_fields = ['created_at', 'updated_at', 'latitude', 'longitude',
                        'delivery_start', 'delivery_end']
@@ -47,6 +55,8 @@ class OrderAdmin(CityScopedAdmin):
                 kwargs['queryset'] = DeliverySlot.objects.filter(city_id=_scoped_city_id(request))
             elif db_field.name == 'address_ref':
                 kwargs['queryset'] = Address.objects.filter(city_id=_scoped_city_id(request))
+            elif db_field.name == 'stage':
+                kwargs['queryset'] = OrderStage.objects.filter(city_id=_scoped_city_id(request))
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def save_model(self, request, obj, form, change):
