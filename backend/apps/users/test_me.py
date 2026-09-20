@@ -70,3 +70,24 @@ def test_me_patch_rejects_inactive_city_and_readonly_fields(user):
     assert resp.status_code == 200
     user.refresh_from_db()
     assert user.telegram_id == 1
+
+
+@pytest.mark.django_db
+def test_me_patch_cannot_touch_privilege_fields(user):
+    resp = auth_client(user).patch('/api/auth/me/', {
+        'role': 'superadmin', 'is_staff': True, 'is_superuser': True, 'username': 'hacked',
+    }, format='json')
+    assert resp.status_code == 200
+    user.refresh_from_db()
+    assert (user.role, user.is_staff, user.is_superuser, user.username) == ('customer', False, False, 'tg_1')
+
+
+@pytest.mark.django_db
+def test_me_patch_ignores_city_for_staff(db):
+    a = City.objects.create(name='A', slug='a')
+    b = City.objects.create(name='B', slug='b')
+    staff = User.objects.create_user(username='tk', telegram_id=42, is_staff=True, role=User.Role.CITY_ADMIN, city=a)
+    resp = auth_client(staff).patch('/api/auth/me/', {'city': b.id, 'first_name': 'Tk'}, format='json')
+    assert resp.status_code == 200
+    staff.refresh_from_db()
+    assert staff.city_id == a.id and staff.first_name == 'Tk'

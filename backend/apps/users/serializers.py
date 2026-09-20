@@ -20,3 +20,11 @@ class MeSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'telegram_id', 'first_name', 'last_name', 'phone', 'city', 'date_joined']
         read_only_fields = ['id', 'telegram_id', 'date_joined']
+
+    def validate(self, attrs):
+        # `User.city` is also the admin scope for role=city_admin staff (apps/catalog/admin.py
+        # CityScopedAdmin): the public profile must never re-point it. Dropped silently so the
+        # customer-side city switch (which already applied locally) does not error for staff.
+        if self.instance is not None and self.instance.is_staff:
+            attrs.pop('city', None)
+        return attrs
