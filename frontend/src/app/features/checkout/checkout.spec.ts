@@ -8,6 +8,7 @@ import { CustomerStore } from '../../core/customer/customer.store';
 import { OrderStore } from '../../core/orders/order.store';
 import { OrderHistoryStore } from '../../core/orders/order-history.store';
 import { DeliveryDay, Order } from '../../core/api/models/order.models';
+import { TokenStore } from '../../core/auth/token.store';
 
 const DAYS: DeliveryDay[] = [
   { date: '2026-09-12', slots: [{ id: 1, start: '09:00', end: '12:00', available: false }] },
@@ -251,5 +252,32 @@ describe('Checkout', () => {
     fixture.componentInstance.locate();
     fixture.componentInstance.form.controls.address.setValue('Chilonzor 5, 3-podyezd');
     expect(fixture.componentInstance.geo()).toEqual({ lat: 41.3, lng: 69.2 });
+  });
+
+  it('offers saved addresses when signed in and preselects the default one', async () => {
+    TestBed.inject(TokenStore).set({ access: 'a', refresh: 'r' });
+    const fixture = TestBed.createComponent(Checkout);
+    fixture.detectChanges();
+    http.expectOne((r) => r.url.endsWith('/delivery-slots/')).flush(DAYS);
+    http.expectOne((r) => r.url.endsWith('/addresses/')).flush([
+      { id: 1, city: 1, title: 'Uy', address: 'Chilonzor 5', latitude: '41.311081', longitude: '69.240562', is_default: true, created_at: '' },
+      { id: 2, city: 1, title: 'Ish', address: 'Amir Temur 10', latitude: null, longitude: null, is_default: false, created_at: '' },
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+    expect(c.form.controls.address.value).toBe('Chilonzor 5');
+    expect(c.geo()).toEqual({ lat: 41.311081, lng: 69.240562 });
+    const chips = fixture.nativeElement.querySelectorAll('.saved .chip') as NodeListOf<HTMLButtonElement>;
+    expect(chips.length).toBe(2);
+    chips[1].click();
+    await fixture.whenStable();
+    expect(c.form.controls.address.value).toBe('Amir Temur 10');
+    expect(c.geo()).toBeNull();
+  });
+
+  it('does not ask for saved addresses as a guest', async () => {
+    await create();
+    http.expectNone((r) => r.url.endsWith('/addresses/'));
   });
 });

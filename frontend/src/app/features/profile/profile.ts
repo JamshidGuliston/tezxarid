@@ -9,6 +9,7 @@ import { CustomerStore } from '../../core/customer/customer.store';
 import { TelegramService } from '../../core/telegram/telegram.service';
 import { PhoneInput } from '../../shared/ui/phone-input/phone-input';
 import { formatDayMonthYear } from '../../shared/utils/dates';
+import { AddressBook } from './address-book';
 
 export type ProfileSection = 'name' | 'phone' | 'city' | 'address';
 const SAVE_FAILED = "Saqlanmadi, qayta urinib ko'ring";
@@ -21,7 +22,7 @@ export function initialsOf(name: string): string {
 @Component({
   selector: 'tx-profile',
   standalone: true,
-  imports: [ReactiveFormsModule, PhoneInput],
+  imports: [ReactiveFormsModule, PhoneInput, AddressBook],
   template: `
     <div class="page">
       <h2 class="title">Profil</h2>
@@ -97,6 +98,8 @@ export function initialsOf(name: string): string {
           }
         }
       </section>
+
+      @if (auth.isAuthenticated()) { <tx-address-book /> }
 
       @if (supportUrl || offerUrl) {
         <section class="rows">

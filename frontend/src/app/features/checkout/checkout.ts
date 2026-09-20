@@ -4,8 +4,11 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { map } from 'rxjs';
+import { AddressesApi } from '../../core/api/addresses-api';
+import { Address } from '../../core/api/models/address.models';
 import { OrdersApi } from '../../core/api/orders-api';
 import { DeliveryDay, DeliverySelection, OrderCreatePayload } from '../../core/api/models/order.models';
+import { AuthService } from '../../core/auth/auth.service';
 import { CartStore } from '../../core/cart/cart.store';
 import { CustomerStore } from '../../core/customer/customer.store';
 import { OrderHistoryStore } from '../../core/orders/order-history.store';
@@ -27,6 +30,7 @@ const MSG = {
   rejected: "Buyurtma qabul qilinmadi. Sahifani yangilab qayta urinib ko'ring.",
   navFailed: "Buyurtma qabul qilindi, lekin sahifa ochilmadi. Bosh sahifaga o'ting.",
   geoStored: 'Saqlangan joylashuv ishlatiladi',
+  savedAddress: 'Saqlangan manzil tanlandi',
 };
 
 @Component({
@@ -69,6 +73,13 @@ const MSG = {
             <tx-phone-input formControlName="phone" />
             @if (fieldError('phone'); as msg) { <small class="err">{{ msg }}</small> }
           </label>
+          @if (saved().length) {
+            <div class="chips saved" aria-label="Saqlangan manzillar">
+              @for (a of saved(); track a.id) {
+                <button type="button" class="chip" [class.on]="form.controls.address.value === a.address" (click)="useAddress(a)">{{ a.title || a.address }}</button>
+              }
+            </div>
+          }
           <label class="field">
             <span>Manzil</span>
             <input formControlName="address" placeholder="Ko'cha, uy, podyezd, kvartira" autocomplete="street-address"
@@ -124,6 +135,7 @@ const MSG = {
     .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .5rem; }
     .chip { border: none; background: #f0f0f0; border-radius: 999px; padding: .45rem .8rem; cursor: pointer;
       font: inherit; font-size: .85rem; }
+    .chip.on { background: #fff4ec; outline: 2px solid #F60; }
     .summary { margin-top: 1rem; }
     .row { display: flex; justify-content: space-between; padding: .35rem 0; color: #555; }
     .row.grand { color: #1a1a1a; font-weight: 800; font-size: 1.15rem; border-top: 1px solid #eee; margin-top: .25rem; padding-top: .6rem; }
@@ -142,10 +154,13 @@ export class Checkout {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   private sum = new SumPipe();
+  private auth = inject(AuthService);
+  private addressesApi = inject(AddressesApi);
   cart = inject(CartStore);
   customer = inject(CustomerStore);
   orders = inject(OrderStore);
   private history = inject(OrderHistoryStore);
+  saved = signal<Address[]>([]);
 
   readonly chips = ["Qo'ng'iroq qiling", 'Eshik oldiga qoldiring'];
 
@@ -206,6 +221,16 @@ export class Checkout {
     this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       if (this.banner() === MSG.fields) this.banner.set(null);
     });
+    if (this.auth.isAuthenticated()) {
+      this.addressesApi.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (list) => {
+          this.saved.set(list);
+          const preferred = list.find((a) => a.is_default);
+          if (preferred && !this.form.controls.address.value) this.useAddress(preferred);
+        },
+        error: () => { /* chips are a convenience; typing still works */ },
+      });
+    }
   }
 
   loadSlots(): void {
@@ -239,6 +264,18 @@ export class Checkout {
       () => this.geoMsg.set(MSG.geoFail),
       { enableHighAccuracy: true, timeout: 10_000 },
     );
+  }
+
+  useAddress(a: Address): void {
+    this.geoFromStore.set(false);                 // these coordinates belong to the chosen address
+    this.form.controls.address.setValue(a.address);
+    if (a.latitude && a.longitude) {
+      this.geo.set({ lat: Number(a.latitude), lng: Number(a.longitude) });
+      this.geoMsg.set(MSG.savedAddress);
+    } else {
+      this.geo.set(null);
+      this.geoMsg.set(null);
+    }
   }
 
   fieldError(name: FieldName): string | null {
