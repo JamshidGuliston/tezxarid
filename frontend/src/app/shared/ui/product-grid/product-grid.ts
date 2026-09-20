@@ -28,5 +28,5 @@ import { ProductCard } from '../product-card/product-card';
 export class ProductGrid {
   products = input.required<Product[]>();
   emptyText = input('Mahsulot topilmadi');
-  cart = inject(CartStore);
+  protected cart = inject(CartStore);
 }

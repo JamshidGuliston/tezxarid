@@ -9,6 +9,7 @@ import { ProductGrid } from '../../shared/ui/product-grid/product-grid';
 type SearchState = 'idle' | 'loading' | 'ready' | 'error';
 const MIN_CHARS = 2;
 
+/** /search?q= — debounced product search for the active city (min 2 chars). */
 @Component({
   selector: 'tx-search',
   standalone: true,
@@ -22,16 +23,18 @@ const MIN_CHARS = 2;
           <button type="button" class="clear" aria-label="Tozalash" (click)="query.set(''); box.focus()">✕</button>
         }
       </div>
-      @switch (state()) {
-        @case ('idle') { <p class="hint">Kamida 2 ta harf kiriting</p> }
-        @case ('loading') { <p class="hint">Qidirilmoqda…</p> }
-        @case ('error') {
-          <p class="hint" role="status">Qidiruvda xatolik.
-            <button type="button" class="link" (click)="retry()">Qayta urinish</button>
-          </p>
+      <div aria-live="polite">
+        @switch (state()) {
+          @case ('idle') { <p class="hint">Kamida 2 ta harf kiriting</p> }
+          @case ('loading') { <p class="hint">Qidirilmoqda…</p> }
+          @case ('error') {
+            <p class="hint" role="status">Qidiruvda xatolik.
+              <button type="button" class="link" (click)="retry()">Qayta urinish</button>
+            </p>
+          }
+          @case ('ready') { <tx-product-grid [products]="results()" emptyText="Hech narsa topilmadi" /> }
         }
-        @case ('ready') { <tx-product-grid [products]="results()" emptyText="Hech narsa topilmadi" /> }
-      }
+      </div>
     </div>
   `,
   styles: [`
@@ -41,7 +44,7 @@ const MIN_CHARS = 2;
     input:focus-visible { outline: 2px solid #F60; outline-offset: 2px; }
     .clear { position: absolute; right: 1.6rem; top: 1.45rem; border: none; background: none; color: #6b6b6b;
       cursor: pointer; font-size: 1rem; }
-    .hint { color: #767676; text-align: center; padding: 2rem 1rem; }
+    .hint { color: #6b6b6b; text-align: center; padding: 2rem 1rem; }
     .link { border: none; background: none; color: #F60; font-weight: 700; cursor: pointer; font: inherit; }
   `],
 })
