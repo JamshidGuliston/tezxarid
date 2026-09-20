@@ -13,6 +13,7 @@ import { authInterceptor } from './core/auth/auth.interceptor';
 import { CityService } from './core/city/city.service';
 import { cityInterceptor } from './core/interceptors/city.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
+import { operatorInterceptor } from './core/operator/operator.interceptor';
 import { TelegramService } from './core/telegram/telegram.service';
 
 export const appConfig: ApplicationConfig = {
@@ -25,7 +26,7 @@ export const appConfig: ApplicationConfig = {
     // and only errors that survive the retry (or have no refresh token to try) reach it.
     provideHttpClient(
       withFetch(),
-      withInterceptors([cityInterceptor, errorInterceptor, authInterceptor]),
+      withInterceptors([operatorInterceptor, cityInterceptor, errorInterceptor, authInterceptor]),
     ),
     // Before any routed component loads: tell Telegram we're ready, resolve the active city
     // (X-City-Id on every city-scoped request) and, inside Telegram, sign the user in.

@@ -12,7 +12,7 @@ function withBearer<T>(req: HttpRequest<T>, token: string | null): HttpRequest<T
 
 /** Adds the JWT to API calls; on 401 refreshes the access token once (shared) and retries. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  if (AUTH_PATHS.some((p) => req.url.includes(p))) return next(req);
+  if (req.url.includes('/api/operator/') || AUTH_PATHS.some((p) => req.url.includes(p))) return next(req);
   const tokens = inject(TokenStore);
   const api = inject(AuthApi);
 
