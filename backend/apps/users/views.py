@@ -1,14 +1,17 @@
 from uuid import uuid4
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, get_user_model
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import MeSerializer, TelegramAuthSerializer
+from apps.common.permissions import is_operator
+
+from .serializers import MeSerializer, OperatorLoginSerializer, OperatorUserSerializer, TelegramAuthSerializer
 from .telegram import TelegramAuthError, verify_telegram_init_data
 
 User = get_user_model()
@@ -58,12 +61,6 @@ class MeView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
-
-
-from django.contrib.auth import authenticate
-from rest_framework.throttling import AnonRateThrottle
-from apps.common.permissions import is_operator
-from .serializers import MeSerializer, OperatorLoginSerializer, OperatorUserSerializer, TelegramAuthSerializer
 
 
 class OperatorLoginThrottle(AnonRateThrottle):

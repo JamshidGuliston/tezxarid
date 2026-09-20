@@ -1,6 +1,7 @@
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.views import APIView
 from apps.cities.models import City
+from .permissions import IsOperator, is_global_operator
 
 CITY_HEADER = 'X-City-Id'
 
@@ -28,10 +29,6 @@ class CityScopedAPIView(APIView):
         if not hasattr(self, '_city'):
             self._city = resolve_city(self.request)
         return self._city
-
-
-from rest_framework.exceptions import PermissionDenied
-from .permissions import IsOperator, is_global_operator
 
 
 def resolve_operator_city(request):
