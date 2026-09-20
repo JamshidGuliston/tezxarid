@@ -38,7 +38,13 @@ python manage.py createsuperuser
 gunicorn config.wsgi:application --bind 127.0.0.1:8000 --workers 3
 ```
 
-Admin (`/admin/`) orqali to'ldiring: **Cities** (kamida bitta faol shahar) → **Categories** → **Products** → **City products** (narx, mavjudlik) → **Delivery slots** (har shahar uchun 2–4 ta oraliq, masalan 09–12, 12–15, 16–19, 19–22). Oraliq bo'lmasa checkout "Bu shaharda yetkazish vaqtlari hali sozlanmagan" deb turadi. Shahar admini uchun foydalanuvchi: `is_staff`, `role = city_admin`, `city` to'ldirilgan, `orders`/`catalog` ruxsatlari berilgan.
+Boshlang'ich katalog uchun tayyor buyruq bor — faol shaharlarni oladi va ularga 9 kategoriya, ~50 mahsulot, narxlar va 4 ta yetkazish oralig'ini qo'shadi (qayta ishga tushirish xavfsiz, adminda o'zgartirilgan narxlarni buzmaydi):
+
+```bash
+python manage.py seed_catalog
+```
+
+Qo'lda to'ldirish tartibi (`/admin/`): **Cities** (kamida bitta faol shahar) → **Categories** → **Products** → **City products** (narx, mavjudlik) → **Delivery slots** (har shahar uchun 2–4 ta oraliq, masalan 09–12, 12–15, 16–19, 19–22). Oraliq bo'lmasa checkout "Bu shaharda yetkazish vaqtlari hali sozlanmagan" deb turadi. Shahar admini uchun foydalanuvchi: `is_staff`, `role = city_admin`, `city` to'ldirilgan, `orders`/`catalog` ruxsatlari berilgan.
 
 ## 2. Frontend
 
