@@ -15,6 +15,8 @@ export const routes: Routes = [
     children: [
       { path: '', loadComponent: () => import('./features/order-admin/orders-board').then((m) => m.OrdersBoard) },
       { path: 'orders/:id', loadComponent: () => import('./features/order-admin/order-detail').then((m) => m.OrderDetail) },
+      { path: 'customers', loadComponent: () => import('./features/order-admin/customers').then((m) => m.Customers) },
+      { path: 'customers/:id', loadComponent: () => import('./features/order-admin/customer-detail').then((m) => m.CustomerDetail) },
     ],
   },
   {
