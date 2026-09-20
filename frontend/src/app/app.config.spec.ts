@@ -3,10 +3,13 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { appConfig } from './app.config';
 import { CityService } from './core/city/city.service';
+import { AuthService } from './core/auth/auth.service';
 
 describe('appConfig', () => {
   let http: HttpTestingController;
   let initStatus: ApplicationInitStatus;
+
+  afterEach(() => { delete (window as { Telegram?: unknown }).Telegram; });
 
   beforeEach(() => {
     localStorage.clear();
@@ -39,6 +42,26 @@ describe('appConfig', () => {
     http.expectOne((r) => r.url.endsWith('/cities/')).flush([]);
     await initStatus.donePromise;
     expect(TestBed.inject(CityService).activeCity()).toBeNull();
+    http.verify();
+  });
+
+  it('signs in through Telegram in parallel with the city lookup when the SDK is present', async () => {
+    TestBed.resetTestingModule();
+    (window as { Telegram?: unknown }).Telegram = { WebApp: {
+      initData: 'init=1', initDataUnsafe: { user: { id: 7 } }, ready() {}, expand() {},
+      BackButton: { show() {}, hide() {}, onClick() {}, offClick() {} }, isVersionAtLeast: () => true,
+      requestContact() {}, openTelegramLink() {}, openLink() {},
+    } };
+    TestBed.configureTestingModule({ providers: [...appConfig.providers, provideHttpClientTesting()] });
+    http = TestBed.inject(HttpTestingController);
+    initStatus = TestBed.inject(ApplicationInitStatus);
+    http.expectOne((r) => r.url.endsWith('/cities/')).flush([{ id: 1, name: 'Guliston', slug: 'guliston' }]);
+    http.expectOne((r) => r.url.endsWith('/auth/telegram/')).flush({ access: 'a', refresh: 'r' });
+    await Promise.resolve();
+    http.expectOne((r) => r.url.endsWith('/auth/me/')).flush({ id: 7, telegram_id: 7, first_name: 'Aziz', last_name: '',
+      phone: '', city: null, date_joined: '2026-09-20T10:15:00+05:00' });
+    await initStatus.donePromise;
+    expect(TestBed.inject(AuthService).me()?.id).toBe(7);
     http.verify();
   });
 });
