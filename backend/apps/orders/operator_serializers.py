@@ -1,5 +1,9 @@
+from decimal import Decimal
+from django.core.validators import MaxValueValidator, MinValueValidator
 from rest_framework import serializers
-from .models import Order, OrderEvent, OrderItem, OrderStage
+from apps.catalog.models import CityProduct
+from apps.common.validators import PHONE_VALIDATOR
+from .models import DeliverySlot, Order, OrderEvent, OrderItem, OrderStage
 
 
 class OperatorStageSerializer(serializers.ModelSerializer):
@@ -79,3 +83,78 @@ class OperatorOrderSerializer(serializers.ModelSerializer):
 
     def get_delivery_window(self, obj) -> str:
         return _window(obj)
+
+
+MAX_ORDER_ITEMS = 100
+LAT_VALIDATORS = [MinValueValidator(Decimal('-90')), MaxValueValidator(Decimal('90'))]
+LNG_VALIDATORS = [MinValueValidator(Decimal('-180')), MaxValueValidator(Decimal('180'))]
+
+
+class OperatorOrderPatchSerializer(serializers.ModelSerializer):
+    """Fields an operator may change while on the phone with the customer."""
+    phone = serializers.CharField(max_length=20, required=False, validators=[PHONE_VALIDATOR])
+    latitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True,
+                                        validators=LAT_VALIDATORS)
+    longitude = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True,
+                                         validators=LNG_VALIDATORS)
+    delivery_slot_id = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+
+    class Meta:
+        model = Order
+        fields = ['customer_name', 'phone', 'address', 'latitude', 'longitude', 'comment',
+                  'payment_type', 'delivery_date', 'delivery_slot_id']
+
+    def validate_delivery_slot_id(self, value):
+        if value is None:
+            return value
+        city = self.context['city']
+        if not DeliverySlot.objects.filter(pk=value, city=city, is_active=True).exists():
+            raise serializers.ValidationError('Delivery slot not available in this city.')
+        return value
+
+    def update(self, instance, validated_data):
+        # The operator agreed the window by phone, so lead time is not enforced here.
+        slot_id = validated_data.pop('delivery_slot_id', 'absent')
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        if slot_id != 'absent':
+            instance.delivery_slot_id = slot_id
+            slot = DeliverySlot.objects.filter(pk=slot_id).first() if slot_id else None
+            instance.delivery_start = slot.start_time if slot else None
+            instance.delivery_end = slot.end_time if slot else None
+        instance.save()
+        return instance
+
+
+class OperatorItemInputSerializer(serializers.Serializer):
+    city_product = serializers.PrimaryKeyRelatedField(
+        queryset=CityProduct.objects.select_related('product'))
+    qty = serializers.DecimalField(max_digits=8, decimal_places=3, min_value=Decimal('0.001'))
+
+
+class OperatorItemsSerializer(serializers.Serializer):
+    """Full replacement of an order's lines."""
+    items = OperatorItemInputSerializer(many=True, max_length=MAX_ORDER_ITEMS)
+
+    def validate_items(self, items):
+        if not items:
+            raise serializers.ValidationError('At least one item is required.')
+        city = self.context['city']
+        for item in items:
+            cp = item['city_product']
+            if cp.city_id != city.id:
+                raise serializers.ValidationError('All items must belong to the order city.')
+            step = cp.product.step or Decimal('1')
+            if (item['qty'] % step) != 0:
+                raise serializers.ValidationError(f'{cp.product.name}: quantity must be a multiple of {step}.')
+        return items
+
+
+class StageMoveSerializer(serializers.Serializer):
+    stage = serializers.CharField(max_length=32)
+    note = serializers.CharField(max_length=500, required=False, allow_blank=True, default='')
+
+
+class EventCreateSerializer(serializers.Serializer):
+    kind = serializers.ChoiceField(choices=[OrderEvent.Kind.CALLED, OrderEvent.Kind.PRINTED])
+    note = serializers.CharField(max_length=500, required=False, allow_blank=True, default='')

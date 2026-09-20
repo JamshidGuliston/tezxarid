@@ -38,10 +38,11 @@ def product(city):
     return CityProduct.objects.create(city=city, product=item, price='19300.00')
 
 
-def make_order(city, code='new', name='Aziz', phone='+998901234567', product=None):
+def make_order(city, code='new', name='Aziz', phone='+998901234567', product=None,
+              delivery_date=dt.date(2026, 9, 21)):
     order = Order.objects.create(
         city=city, customer_name=name, phone=phone, address='Chilonzor 5', total='19300.00',
-        delivery_date=dt.date(2026, 9, 21), delivery_start=dt.time(9), delivery_end=dt.time(12),
+        delivery_date=delivery_date, delivery_start=dt.time(9), delivery_end=dt.time(12),
         stage=OrderStage.objects.get(city=city, code=code))
     if product is not None:
         OrderItem.objects.create(order=order, city_product=product, qty='1.000', price_snapshot=product.price)
@@ -81,6 +82,15 @@ def test_orders_list_is_scoped_counted_and_filterable(operator, city, other_city
 
     by_date = client_for(operator).get('/api/operator/orders/?date=2026-09-21').json()
     assert by_date['count'] == 2
+
+
+@pytest.mark.django_db
+def test_orders_counts_follow_the_date_filter(operator, city):
+    make_order(city, 'new', delivery_date=dt.date(2026, 9, 21))
+    make_order(city, 'accepted', name='Dilnoza', phone='+998977654321', delivery_date=dt.date(2026, 9, 22))
+    body = client_for(operator).get('/api/operator/orders/?date=2026-09-21').json()
+    assert body['count'] == 1
+    assert body['counts']['new'] == 1 and body['counts']['accepted'] == 0
 
 
 @pytest.mark.django_db
