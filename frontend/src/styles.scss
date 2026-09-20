@@ -2,4 +2,6 @@
 html, body { margin: 0; padding: 0; }
 body { font-family: system-ui, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; background: #fff; }
 a { -webkit-tap-highlight-color: transparent; }
-:root { --brand: #F60; }
+/* --tx-nav-h: height of the fixed bottom nav; floating controls and sticky bars offset from it. */
+:root { --brand: #F60; --tx-nav-h: 4rem; }
+@media (min-width: 900px) { :root { --tx-nav-h: 0px; } }

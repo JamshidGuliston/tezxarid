@@ -126,11 +126,11 @@ const MSG = {
     .summary { margin-top: 1rem; }
     .row { display: flex; justify-content: space-between; padding: .35rem 0; color: #555; }
     .row.grand { color: #1a1a1a; font-weight: 800; font-size: 1.15rem; border-top: 1px solid #eee; margin-top: .25rem; padding-top: .6rem; }
-    .submit-bar { position: sticky; bottom: 0; padding: .75rem 1rem 1rem; background: linear-gradient(transparent, #fff 30%); }
+    .submit-bar { position: sticky; bottom: var(--tx-nav-h); padding: .75rem 1rem 1rem; background: linear-gradient(transparent, #fff 30%); }
     .submit { width: 100%; border: none; border-radius: 14px; background: #F60; color: #fff; font-weight: 800;
       font-size: 1.05rem; padding: 1rem; cursor: pointer; box-shadow: 0 6px 16px rgba(255,102,0,.3); font-family: inherit; }
     .submit:disabled { background: #e6e6e6; color: #6b6b6b; box-shadow: none; cursor: default; }
-    @media (max-width: 899px) { .submit-bar { bottom: 2.6rem; } } /* sits above the sticky bottom nav */
+    @media (max-width: 899px) { .submit-bar { padding-left: 4.75rem; } } /* room for the floating back button */
   `],
 })
 export class Checkout {
