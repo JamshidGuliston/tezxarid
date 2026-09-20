@@ -28,3 +28,28 @@ class CityScopedAPIView(APIView):
         if not hasattr(self, '_city'):
             self._city = resolve_city(self.request)
         return self._city
+
+
+from rest_framework.exceptions import PermissionDenied
+from .permissions import IsOperator, is_global_operator
+
+
+def resolve_operator_city(request):
+    """A city operator is pinned to their own city; a global operator picks one with X-City-Id."""
+    if is_global_operator(request.user):
+        return resolve_city(request)
+    city = getattr(request.user, 'city', None)
+    if city is None or not city.is_active:
+        raise PermissionDenied('This operator is not attached to an active city.')
+    return city
+
+
+class OperatorAPIView(APIView):
+    """Base view for /api/operator/: operator-only, with self.city resolved from the account."""
+    permission_classes = [IsOperator]
+
+    @property
+    def city(self):
+        if not hasattr(self, '_city'):
+            self._city = resolve_operator_city(self.request)
+        return self._city

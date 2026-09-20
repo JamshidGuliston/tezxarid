@@ -2,7 +2,7 @@ from django.contrib import admin
 from apps.catalog.admin import CityScopedAdmin, is_global_admin
 from apps.catalog.models import CityProduct
 from apps.users.models import Address
-from .models import DeliverySlot, Order, OrderItem, OrderStage
+from .models import DeliverySlot, Order, OrderEvent, OrderItem, OrderStage
 
 
 def _scoped_city_id(request):
@@ -29,6 +29,16 @@ class OrderItemInline(admin.TabularInline):
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
+class OrderEventInline(admin.TabularInline):
+    model = OrderEvent
+    extra = 0
+    can_delete = False
+    readonly_fields = ['kind', 'actor', 'from_stage', 'to_stage', 'note', 'created_at']
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 @admin.register(OrderStage)
 class OrderStageAdmin(CityScopedAdmin):
     city_field = 'city'
@@ -46,7 +56,7 @@ class OrderAdmin(CityScopedAdmin):
     search_fields = ['customer_name', 'phone', 'address']
     readonly_fields = ['created_at', 'updated_at', 'latitude', 'longitude',
                        'delivery_start', 'delivery_end']
-    inlines = [OrderItemInline]
+    inlines = [OrderItemInline, OrderEventInline]
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         # `city` is handled by CityScopedAdmin; the slot and saved-address FKs are city-bound too.

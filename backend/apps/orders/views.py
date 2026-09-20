@@ -39,5 +39,6 @@ class OrderListCreateView(CityScopedAPIView):
             return Response({'detail': 'Authentication required.'},
                             status=status.HTTP_401_UNAUTHORIZED)
         orders = (Order.objects.filter(user=request.user)
+                  .select_related('stage')
                   .prefetch_related('items', 'items__city_product__product'))
         return Response(OrderSerializer(orders, many=True).data)

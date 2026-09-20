@@ -105,3 +105,27 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f'{self.city_product} x{self.qty}'
+
+
+class OrderEvent(models.Model):
+    """Audit trail: who moved, edited, called or printed an order, and when."""
+    class Kind(models.TextChoices):
+        CREATED = 'created', 'Created'
+        STAGE = 'stage', 'Stage changed'
+        EDITED = 'edited', 'Edited'
+        CALLED = 'called', 'Called'
+        PRINTED = 'printed', 'Printed'
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='events')
+    actor = models.ForeignKey('users.User', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    from_stage = models.ForeignKey(OrderStage, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    to_stage = models.ForeignKey(OrderStage, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    note = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.get_kind_display()} · order {self.order_id}'
