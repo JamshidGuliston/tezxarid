@@ -131,7 +131,7 @@ const MSG = {
       font-size: 1.05rem; padding: 1rem; cursor: pointer; box-shadow: 0 6px 16px rgba(255,102,0,.3); font-family: inherit;
       white-space: nowrap; }
     .submit:disabled { background: #e6e6e6; color: #6b6b6b; box-shadow: none; cursor: default; }
-    @media (max-width: 672px) { .submit-bar { padding-left: 4rem; } } /* the 3rem floating back button at left: 1rem overlaps the page column only below 640px + gutters */
+    @media (max-width: 672px) { .submit-bar { padding-left: 4.5rem; } } /* the 3rem floating back button at left: 1rem (plus a .5rem gutter) overlaps the page column only below 640px + gutters */
     @media (max-width: 380px) { .submit { font-size: .95rem; padding: .9rem .75rem; } }
   `],
 })
