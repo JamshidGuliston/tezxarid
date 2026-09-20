@@ -33,6 +33,7 @@ describe('OrdersBoard', () => {
     const fixture = TestBed.createComponent(OrdersBoard);
     fixture.detectChanges();
     http.expectOne((r) => r.url.endsWith('/operator/stages/')).flush(STAGES);
+    await vi.advanceTimersByTimeAsync(300);
     http.expectOne((r) => r.url.endsWith('/operator/orders/')).flush(page([row(7)]));
     await vi.advanceTimersByTimeAsync(0);
     fixture.detectChanges();
@@ -52,7 +53,7 @@ describe('OrdersBoard', () => {
   it('filters by stage through the query', async () => {
     const fixture = await create();
     (fixture.nativeElement.querySelectorAll('.tabs button')[2] as HTMLButtonElement).click();
-    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(300);
     const req = http.expectOne((r) => r.url.endsWith('/operator/orders/') && r.params.get('stage') === 'accepted');
     req.flush(page([]));
     await vi.advanceTimersByTimeAsync(0);
@@ -84,5 +85,19 @@ describe('OrdersBoard', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('№ 7');
     expect(fixture.nativeElement.textContent).toContain('yangilanmadi');
+  });
+
+  it('debounces rapid search input into a single request', async () => {
+    const fixture = await create();
+    fixture.componentInstance.query.set('al');
+    await vi.advanceTimersByTimeAsync(100);
+    fixture.componentInstance.query.set('ali');
+    await vi.advanceTimersByTimeAsync(300);
+    expect(http.match((r) => r.url.endsWith('/operator/orders/') && r.params.get('q') === 'al')).toEqual([]);
+    // The board also polls, so filter out any cancelled requests the way the polling tests do.
+    const matched = http.match((r) => r.url.endsWith('/operator/orders/') && r.params.get('q') === 'ali')
+      .filter((r) => !r.cancelled);
+    expect(matched.length).toBe(1);
+    matched[0].flush(page([]));
   });
 });

@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { EMPTY, catchError, combineLatest, interval, map, startWith, switchMap } from 'rxjs';
+import { catchError, combineLatest, debounceTime, interval, map, startWith, switchMap } from 'rxjs';
 import { OperatorApi } from '../../core/api/operator-api';
 import { OperatorOrderRow, OperatorStage } from '../../core/api/models/operator.models';
 import { SumPipe } from '../../shared/pipes/sum.pipe';
@@ -97,7 +97,7 @@ export class OrdersBoard {
     });
 
     combineLatest([
-      toObservable(this.filters),
+      toObservable(this.filters).pipe(debounceTime(250)),
       interval(POLL_MS).pipe(startWith(0)),
     ]).pipe(
       map(([filters]) => filters),
