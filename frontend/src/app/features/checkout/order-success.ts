@@ -16,7 +16,7 @@ import { formatDayMonth } from '../../shared/utils/dates';
         <h2 #heading tabindex="-1">Buyurtma qabul qilindi</h2>
         <p class="num">№ {{ o.id }}</p>
         <dl class="facts">
-          <div><dt>Yetkazish</dt><dd>{{ dateLabel() }}, {{ o.delivery_start }} – {{ o.delivery_end }}</dd></div>
+          <div><dt>Yetkazish</dt><dd>{{ dateLabel() }}{{ o.delivery_start && o.delivery_end ? ', ' + o.delivery_start + ' – ' + o.delivery_end : '' }}</dd></div>
           <div><dt>Manzil</dt><dd>{{ o.address }}</dd></div>
           <div><dt>To'lov</dt><dd>Naqd pul</dd></div>
           <div><dt>Jami</dt><dd class="grand">{{ o.total | sum }}</dd></div>
@@ -47,7 +47,7 @@ export class OrderSuccess {
   order = inject(OrderStore).lastOrder;
   dateLabel = computed(() => {
     const o = this.order();
-    return o ? formatDayMonth(o.delivery_date) : '';
+    return o?.delivery_date ? formatDayMonth(o.delivery_date) : '';
   });
 
   private heading = viewChild<ElementRef<HTMLElement>>('heading');

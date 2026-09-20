@@ -1,4 +1,4 @@
-import { dayNumber, formatDayMonth, parseIsoDate, todayIso, weekdayShort } from './dates';
+import { dayNumber, formatDayMonth, formatDayMonthYear, parseIsoDate, todayIso, weekdayShort } from './dates';
 
 describe('dates', () => {
   it('parses ISO dates as local dates', () => {
@@ -22,5 +22,10 @@ describe('dates', () => {
     const now = new Date();
     const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     expect(todayIso()).toBe(expected);
+  });
+
+  it('formats a datetime as day-month, year', () => {
+    // 12:00 UTC — the same calendar day in every zone from UTC-11 to UTC+11, so this fixture is timezone-robust.
+    expect(formatDayMonthYear('2026-09-20T17:00:00+05:00')).toBe('20-sentabr, 2026');
   });
 });

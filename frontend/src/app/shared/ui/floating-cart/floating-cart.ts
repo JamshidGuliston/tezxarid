@@ -22,7 +22,7 @@ function isCartOrCheckout(url: string): boolean {
     }
   `,
   styles: [`
-    .pill { position: fixed; right: 1rem; bottom: 4.5rem; z-index: 20;
+    .pill { position: fixed; right: 1rem; bottom: calc(var(--tx-nav-h) + 1rem); z-index: 20;
       display: inline-flex; align-items: center; gap: .6rem; background: #F60; color: #fff;
       padding: .7rem 1.2rem; border-radius: 999px; text-decoration: none; font-weight: 700;
       box-shadow: 0 4px 12px rgba(0,0,0,.25); }

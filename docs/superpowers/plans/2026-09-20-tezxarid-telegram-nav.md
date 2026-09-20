@@ -3031,3 +3031,37 @@ git commit -m "docs: Telegram Mini App deploy steps; Plan 3c post-implementation
 - `Checkout.useAddress`, `saved`, existing `geo`/`geoFromStore`/`geoMsg` — Task 9 builds on the Plan 3b fields.
 - `--tx-nav-h` defined in `styles.scss` (Task 2) and consumed by nav, shell, floating cart, back button, checkout.
 - Routes `/search`, `/orders`, `/profile` added in Tasks 5, 7, 8 and linked by `BottomNav` (Task 2).
+
+## Post-implementation notes (2026-09-20)
+
+Executed on `feat/plan-3c-telegram-nav` with subagent-driven development: one implementer per task, then a spec-compliance review and a code-quality review, fix commits, and re-review until approved.
+
+**Test counts.** Backend `pytest -q`: 121 passed (109 before the plan). Frontend `ng test`: **166 passed / 40 spec files** at the final commit (95 → 98 → 104 → 107 → 123 → 134 → 140 → 144 → 150 → 157 → 166 as tasks and fix commits landed; the plan's per-task estimates were 5–20 lower because Tasks 2–3 already carried more specs than planned).
+
+**Production build** (`npx ng build`, Angular 21.2): initial 288 kB raw / 83 kB transfer; lazy chunks `profile` 18.0 kB, `checkout` 16.7 kB, `orders` 6.7 kB, `search` 3.4 kB, `order-success` 2.9 kB, `home` 2.1 kB; `dist/frontend/browser/index.html` carries the deferred Telegram SDK script.
+
+**API smoke** (dev server): `GET /api/products/?search=ol` with `X-City-Id: 1` → 6 products; anonymous `GET /api/auth/me/` → 401; anonymous `GET /api/orders/` → 401.
+
+**Browser smoke** (`scratchpad/smoke3c.js`, headless Edge via Playwright, 390×844 and 1280×860, no console errors):
+- Bottom nav: 4 icon tabs, 64 px tall, active tab `rgb(255,102,0)`, shell body padding equals the nav height; hidden at 1280 px.
+- Back button: absent on home; on a category at (16, 716) 48×48 px, 16 px above the nav; tap → home. On checkout it sits left of the submit bar without overlap (bar starts at 72 px), the bar ends above the nav, the floating cart is hidden. Desktop: bottom 1.5 rem. Deep link `/search?q=ol` → back → home (depth tracking, not `history.back()` out of the app).
+- Search: one letter → "Kamida 2 ta harf kiriting"; `ol` → 6 cards, URL synced to `?q=ol`, tab stays active, add-to-cart works from results.
+- Orders (guest): after placing an order it appears under "Faol" as "Yuborilgan" with the device note; the card expands to its items.
+- Profile (guest): name and phone saved on the device and prefilled in checkout; city switch with a non-empty cart (confirm accepted) clears the cart, stores the new city and reloads home.
+- Telegram stub (fake `window.Telegram.WebApp`, SDK request blocked): `ready()`/`expand()` called once, BackButton hidden on home, shown on a category, the native handler navigates home; the fake `initData` is rejected with 400 and the app stays a guest.
+
+**Deviations from the plan (all review-driven).**
+- Task 4: `BackButton` no longer counts `NavigationEnd`s; it keeps a 1-based in-app depth stamped onto `history.state` (`txDepth`), ignores `replaceUrl`/`skipLocationChange` navigations (Search's `?q=` sync) and restores the depth on popstate. Checkout's submit bar reserves 4.5 rem on the left.
+- Task 5: Search specs use Vitest fake timers (`vi.advanceTimersByTimeAsync`) instead of real waits; results wrapped in `aria-live="polite"`.
+- Task 6: interceptor order is `[cityInterceptor, errorInterceptor, authInterceptor]` (auth innermost, so a refreshed 401 never logs an error); the retry's own errors propagate instead of being replaced by the original 401; `requestPhone` keeps the number on the device if the server PATCH fails; `AuthService.me` is cleared by an effect when tokens are cleared.
+- Task 7: `Orders` re-syncs with auth changes through an `effect` (sign-out mid-visit no longer leaves a dead error state); the Faol/Tarix toggle uses `role="group"` + `aria-pressed` like `DeliveryPicker`.
+- Tasks 8–9 (final fix commit): saved-address chips and the preselected default are limited to the active city; selecting a saved address marks its coordinates as tied to that text so a manual edit clears them; the profile city `<select>` preselects via per-option `[selected]`; `saveCity()` runs through the shared `persist()` guard; error-path tests added (save failure banner, Telegram contact declined, categories load failure); the address book labels addresses from other cities.
+
+**Carry-overs (not done in this plan).**
+1. Submit `address_id` when a saved address is chosen (backend already resolves it and sets `Order.address_ref`); today the chip copies text + coordinates.
+2. Guest device history never moves to "Tarix" (status is frozen at creation) — decide between hiding the tab for guests or ageing orders after N hours.
+3. `#F60` as text colour (nav active label, link buttons) is ~2.9:1 on white app-wide.
+4. `TelegramService.openLink` silently ignores unparseable URLs; `window.confirm` on city switch could use `WebApp.showConfirm` inside Telegram.
+5. `order-success` and `order-card` duplicate the "date + time window" formatting; `order-card`'s disclosure lacks `aria-controls`.
+6. Duplicate `auth_client` helpers in backend tests (move to a conftest); duplicate `SAVE_FAILED` copy in `profile.ts` / `address-book.ts`.
+7. `supportUrl` stays empty until the bot username is known (`environment.prod.ts`), then rebuild.

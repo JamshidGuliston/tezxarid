@@ -16,4 +16,9 @@ export class OrdersApi {
   createOrder(payload: OrderCreatePayload): Observable<Order> {
     return this.http.post<Order>(`${this.base}/orders/`, payload);
   }
+
+  /** The signed-in user's orders, newest first (401 for guests). */
+  listOrders(): Observable<Order[]> {
+    return this.http.get<Order[]>(`${this.base}/orders/`);
+  }
 }

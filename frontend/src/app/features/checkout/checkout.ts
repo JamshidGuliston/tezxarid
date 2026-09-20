@@ -4,10 +4,15 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { map } from 'rxjs';
+import { AddressesApi } from '../../core/api/addresses-api';
+import { Address } from '../../core/api/models/address.models';
 import { OrdersApi } from '../../core/api/orders-api';
 import { DeliveryDay, DeliverySelection, OrderCreatePayload } from '../../core/api/models/order.models';
+import { AuthService } from '../../core/auth/auth.service';
 import { CartStore } from '../../core/cart/cart.store';
+import { CityService } from '../../core/city/city.service';
 import { CustomerStore } from '../../core/customer/customer.store';
+import { OrderHistoryStore } from '../../core/orders/order-history.store';
 import { OrderStore } from '../../core/orders/order.store';
 import { SumPipe } from '../../shared/pipes/sum.pipe';
 import { DeliveryPicker } from '../../shared/ui/delivery-picker/delivery-picker';
@@ -26,6 +31,7 @@ const MSG = {
   rejected: "Buyurtma qabul qilinmadi. Sahifani yangilab qayta urinib ko'ring.",
   navFailed: "Buyurtma qabul qilindi, lekin sahifa ochilmadi. Bosh sahifaga o'ting.",
   geoStored: 'Saqlangan joylashuv ishlatiladi',
+  savedAddress: 'Saqlangan manzil tanlandi',
 };
 
 @Component({
@@ -68,6 +74,13 @@ const MSG = {
             <tx-phone-input formControlName="phone" />
             @if (fieldError('phone'); as msg) { <small class="err">{{ msg }}</small> }
           </label>
+          @if (saved().length) {
+            <div class="chips saved" role="group" aria-label="Saqlangan manzillar">
+              @for (a of saved(); track a.id) {
+                <button type="button" class="chip" [class.on]="form.controls.address.value === a.address" (click)="useAddress(a)">{{ a.title || a.address }}</button>
+              }
+            </div>
+          }
           <label class="field">
             <span>Manzil</span>
             <input formControlName="address" placeholder="Ko'cha, uy, podyezd, kvartira" autocomplete="street-address"
@@ -123,14 +136,17 @@ const MSG = {
     .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .5rem; }
     .chip { border: none; background: #f0f0f0; border-radius: 999px; padding: .45rem .8rem; cursor: pointer;
       font: inherit; font-size: .85rem; }
+    .chip.on { background: #fff4ec; outline: 2px solid #F60; }
     .summary { margin-top: 1rem; }
     .row { display: flex; justify-content: space-between; padding: .35rem 0; color: #555; }
     .row.grand { color: #1a1a1a; font-weight: 800; font-size: 1.15rem; border-top: 1px solid #eee; margin-top: .25rem; padding-top: .6rem; }
-    .submit-bar { position: sticky; bottom: 0; padding: .75rem 1rem 1rem; background: linear-gradient(transparent, #fff 30%); }
+    .submit-bar { position: sticky; bottom: var(--tx-nav-h); padding: .75rem 1rem 1rem; background: linear-gradient(transparent, #fff 30%); }
     .submit { width: 100%; border: none; border-radius: 14px; background: #F60; color: #fff; font-weight: 800;
-      font-size: 1.05rem; padding: 1rem; cursor: pointer; box-shadow: 0 6px 16px rgba(255,102,0,.3); font-family: inherit; }
+      font-size: 1.05rem; padding: 1rem; cursor: pointer; box-shadow: 0 6px 16px rgba(255,102,0,.3); font-family: inherit;
+      white-space: nowrap; }
     .submit:disabled { background: #e6e6e6; color: #6b6b6b; box-shadow: none; cursor: default; }
-    @media (max-width: 899px) { .submit-bar { bottom: 2.6rem; } } /* sits above the sticky bottom nav */
+    @media (max-width: 672px) { .submit-bar { padding-left: 4.5rem; } } /* the 3rem floating back button at left: 1rem (plus a .5rem gutter) overlaps the page column only below 640px + gutters */
+    @media (max-width: 380px) { .submit { font-size: .95rem; padding: .9rem .75rem; } }
   `],
 })
 export class Checkout {
@@ -139,9 +155,14 @@ export class Checkout {
   private router = inject(Router);
   private destroyRef = inject(DestroyRef);
   private sum = new SumPipe();
+  private auth = inject(AuthService);
+  private addressesApi = inject(AddressesApi);
+  private cityService = inject(CityService);
   cart = inject(CartStore);
   customer = inject(CustomerStore);
   orders = inject(OrderStore);
+  private history = inject(OrderHistoryStore);
+  saved = signal<Address[]>([]);
 
   readonly chips = ["Qo'ng'iroq qiling", 'Eshik oldiga qoldiring'];
 
@@ -155,8 +176,10 @@ export class Checkout {
       ? { lat: this.customer.info().latitude!, lng: this.customer.info().longitude! }
       : null,
   );
-  /** True while `geo` still holds the coordinates loaded from CustomerStore, i.e. coordinates
-   *  captured for a *previous* address. A reading taken on this page clears it. */
+  /** True while `geo` holds coordinates tied to a specific stored address — either loaded from
+   *  CustomerStore on init or set by picking a saved address via `useAddress`. Editing the address
+   *  text afterwards then clears `geo`, since it no longer describes what's typed. A reading taken
+   *  on this page (via `locate()`) is not "from store", so editing the address afterwards keeps it. */
   private geoFromStore = signal(this.geo() !== null);
   geoMsg = signal<string | null>(null);
 
@@ -202,6 +225,18 @@ export class Checkout {
     this.form.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       if (this.banner() === MSG.fields) this.banner.set(null);
     });
+    if (this.auth.isAuthenticated()) {
+      this.addressesApi.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (list) => {
+          // Addresses saved for another city aren't deliverable here.
+          const mine = list.filter((a) => a.city === this.cityService.cityId);
+          this.saved.set(mine);
+          const preferred = mine.find((a) => a.is_default);
+          if (preferred && !this.form.controls.address.value) this.useAddress(preferred);
+        },
+        error: () => { /* chips are a convenience; typing still works */ },
+      });
+    }
   }
 
   loadSlots(): void {
@@ -235,6 +270,21 @@ export class Checkout {
       () => this.geoMsg.set(MSG.geoFail),
       { enableHighAccuracy: true, timeout: 10_000 },
     );
+  }
+
+  useAddress(a: Address): void {
+    this.form.controls.address.setValue(a.address);
+    if (a.latitude && a.longitude) {
+      this.geo.set({ lat: Number(a.latitude), lng: Number(a.longitude) });
+      this.geoMsg.set(MSG.savedAddress);
+    } else {
+      this.geo.set(null);
+      this.geoMsg.set(null);
+    }
+    // Set last: setValue() above may run the guard on the *previous* geoFromStore value, which is
+    // fine since we've already resolved geo/geoMsg for this address. From here on, these coordinates
+    // are tied to the address just selected, so the next real edit clears them.
+    this.geoFromStore.set(!!(a.latitude && a.longitude));
   }
 
   fieldError(name: FieldName): string | null {
@@ -271,6 +321,8 @@ export class Checkout {
     this.api.createOrder(payload).subscribe({
       next: (order) => {
         this.orders.lastOrder.set(order);
+        // Also for signed-in users: if the session lapses later, the device history is all /orders can show.
+        this.history.add(order);
         this.customer.save({
           name: payload.customer_name, phone: payload.phone, address: payload.address,
           latitude: geo?.lat ?? null, longitude: geo?.lng ?? null,

@@ -49,9 +49,9 @@ export interface Order {
   status: string;
   payment_type: string;
   total: string;
-  delivery_date: string;
-  delivery_start: string;        // 'HH:MM'
-  delivery_end: string;          // 'HH:MM'
+  delivery_date: string | null;
+  delivery_start: string | null; // 'HH:MM'
+  delivery_end: string | null;   // 'HH:MM'
   created_at: string;
   items: OrderItem[];
 }

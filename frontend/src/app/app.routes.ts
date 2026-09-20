@@ -6,6 +6,9 @@ export const routes: Routes = [
   { path: '', loadComponent: () => import('./features/home/home').then((m) => m.Home) },
   { path: 'category/:id', loadComponent: () => import('./features/category/category').then((m) => m.Category) },
   { path: 'cart', loadComponent: () => import('./features/cart/cart-page').then((m) => m.CartPage) },
+  { path: 'search', loadComponent: () => import('./features/search/search').then((m) => m.Search) },
+  { path: 'orders', loadComponent: () => import('./features/orders/orders').then((m) => m.Orders) },
+  { path: 'profile', loadComponent: () => import('./features/profile/profile').then((m) => m.Profile) },
   // Most specific first (stylistic: a leaf route never matches leftover URL segments anyway).
   { path: 'checkout/success', canActivate: [orderExistsGuard], loadComponent: () => import('./features/checkout/order-success').then((m) => m.OrderSuccess) },
   { path: 'checkout', canActivate: [cartNotEmptyGuard], loadComponent: () => import('./features/checkout/checkout').then((m) => m.Checkout) },

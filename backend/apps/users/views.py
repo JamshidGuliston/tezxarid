@@ -3,11 +3,12 @@ from uuid import uuid4
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import TelegramAuthSerializer
+from .serializers import MeSerializer, TelegramAuthSerializer
 from .telegram import TelegramAuthError, verify_telegram_init_data
 
 User = get_user_model()
@@ -43,3 +44,17 @@ class TelegramAuthView(APIView):
 
         refresh = RefreshToken.for_user(user)
         return Response({'access': str(refresh.access_token), 'refresh': str(refresh)})
+
+
+class MeView(APIView):
+    """GET: the caller's profile. PATCH: partial update of name, phone, city."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(MeSerializer(request.user).data)
+
+    def patch(self, request):
+        serializer = MeSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
