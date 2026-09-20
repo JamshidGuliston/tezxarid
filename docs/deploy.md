@@ -90,7 +90,8 @@ Frontend boshqa domenda (masalan `tezxarid.uz`) turadigan bo'lsa, yuqoridagi `ro
 1. `https://xorjin.toyxat.uz/api/cities/` — faol shaharlar ro'yxati.
 2. `https://xorjin.toyxat.uz/api/delivery-slots/` (`X-City-Id: <id>` sarlavhasi bilan) — 7 kunlik ro'yxat.
 3. Saytda: kategoriya → `+` → savat → "Buyurtma berish" → kun/oraliq → ism, telefon, manzil → yuborish → "Buyurtma qabul qilindi"; adminda buyurtma sana va oraliq bilan ko'rinadi.
-4. Mobil kenglikda: pastki navigatsiya, suzuvchi savat, checkout tugmasi nav ustida.
+4. Mobil kenglikda: 64px ikonkali pastki navigatsiya (Bosh sahifa / Qidiruv / Buyurtmalar / Profil), suzuvchi savat, checkout tugmasi nav ustida.
+5. Bosh sahifadan boshqa har bir sahifada chap-pastda dumaloq "Orqaga" tugmasi (Telegram ichida tizim BackButton ham); `/search?q=ol` qidiradi; `/orders` va `/profil` mehmon rejimida ham ochiladi.
 
 ## 5. Yangilash
 
@@ -107,3 +108,12 @@ cd ../frontend && npm ci && npx ng build && sudo systemctl reload nginx
 3. nginx `server_name` va TLS sertifikati (certbot) yangi domenga.
 4. Frontend boshqa domenda bo'lsa `DJANGO_CORS_ALLOWED_ORIGINS` ni ham tekshiring.
 5. Tekshiruv: `curl https://<yangi-domen>/api/cities/` va saytda bitta sinov buyurtmasi.
+
+## 7. Telegram Mini App
+
+1. `@BotFather` → `/newbot` → token → serverda `TELEGRAM_BOT_TOKEN` (haqiqiy token, aks holda `initData` tekshiruvi 400 qaytaradi va ilova mehmon rejimida qoladi).
+2. `/mybots` → bot → *Bot Settings* → *Menu Button* → frontend URL (`https://writing.sefr.uz/`). Ixtiyoriy: `/newapp` → `https://t.me/<bot>/<app>` havolasi.
+3. Frontend nginx'ida `X-Frame-Options: DENY` bo'lmasin (Telegram Web iframe'da ochadi).
+4. `frontend/src/environments/environment.prod.ts` → `supportUrl: 'https://t.me/<bot_username>'` (Profil'dagi "Qo'llab-quvvatlash"), kerak bo'lsa `offerUrl`; keyin `npx ng build`.
+5. Tekshiruv: Telegram'da botni oching → menyu tugmasi → Profil'da ismingiz Telegram'dan chiqadi → buyurtma bering → Buyurtmalar'da "Faol" ro'yxatida ko'rinadi.
+6. Brauzerda (Telegram'siz) ilova mehmon rejimida ishlaydi: ism/telefon/manzil qurilmada saqlanadi, Buyurtmalar sahifasi shu qurilmadan berilgan buyurtmalarni ko'rsatadi ("Holat yangilanmaydi").
