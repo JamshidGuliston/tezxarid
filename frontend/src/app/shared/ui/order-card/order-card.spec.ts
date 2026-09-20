@@ -42,4 +42,19 @@ describe('OrderCard', () => {
     expect(text).toContain('Yuborilgan');
     expect(text).toContain("sana ko'rsatilmagan");
   });
+
+  it('shows the server stage label and the progress line', async () => {
+    const fixture = await create({ ...ORDER, status: 'preparing', status_label: "Yig'ilmoqda",
+      status_step: 3, status_total: 5, is_final: false, is_canceled: false } as Order);
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain("Yig'ilmoqda");
+    const bar = fixture.nativeElement.querySelector('.progress span') as HTMLElement;
+    expect(bar.style.width).toBe('60%');
+  });
+
+  it('hides the progress line for a finished order', async () => {
+    const fixture = await create({ ...ORDER, status: 'done', status_label: 'Yetkazildi',
+      status_step: 5, status_total: 5, is_final: true, is_canceled: false } as Order);
+    expect(fixture.nativeElement.querySelector('.progress')).toBeNull();
+  });
 });

@@ -117,3 +117,14 @@ cd ../frontend && npm ci && npx ng build && sudo systemctl reload nginx
 4. `frontend/src/environments/environment.prod.ts` → `supportUrl: 'https://t.me/<bot_username>'` (Profil'dagi "Qo'llab-quvvatlash"), kerak bo'lsa `offerUrl`; keyin `npx ng build`.
 5. Tekshiruv: Telegram'da botni oching → menyu tugmasi → Profil'da ismingiz Telegram'dan chiqadi → buyurtma bering → Buyurtmalar'da "Faol" ro'yxatida ko'rinadi.
 6. Brauzerda (Telegram'siz) ilova mehmon rejimida ishlaydi: ism/telefon/manzil qurilmada saqlanadi, Buyurtmalar sahifasi shu qurilmadan berilgan buyurtmalarni ko'rsatadi ("Holat yangilanmaydi").
+
+## 8. Operator konsoli (/order-admin)
+
+1. Migratsiya majburiy: `python manage.py migrate` (buyurtma holatlari endi `OrderStage` jadvalida; eski `status` qiymatlari avtomatik ko'chiriladi).
+2. Django adminda har shahar uchun operator yarating: *Users* → *Add user* → login va parol → keyin `role = City admin`, `city = <shahar>`, `is_staff = ✓`. Superadmin (`role = Superadmin` yoki superuser) barcha shaharlarni ko'radi va `X-City-Id` orqali shahar almashtiradi.
+3. Bosqichlar: har shaharga avtomatik 6 ta bosqich yaratiladi — Yangi, Tasdiqlandi, Yig'ilmoqda, Yo'lda, Yetkazildi, Bekor qilindi. *Order stages* bo'limida nomini, tartibini o'zgartirish yoki keraksizini `is_active` orqali o'chirish mumkin. Har shaharda bitta `is_initial` va bitta `is_canceled` bosqich bo'lishi kerak.
+4. Operator `https://<frontend>/order-admin` manzilidan login va parol bilan kiradi. Konsol ommaviy saytda joylashgan, shuning uchun parollar kuchli bo'lsin va login urinishlari daqiqasiga 10 tadan oshmaydi.
+5. Ish tartibi: yangi buyurtma kelganda ro'yxat o'zi yangilanadi va ovozli signal chiqadi → operator mijozga qo'ng'iroq qiladi (qo'ng'iroq jurnalga yoziladi) → kerak bo'lsa mahsulot, miqdor, manzil va yetkazish vaqtini o'zgartiradi → "Tasdiqlash" bosadi. Bekor qilish uchun sabab yozish majburiy.
+6. Chek: buyurtma sahifasidagi "Chekni chop etish" brauzer print oynasini ochadi. Printer qog'ozi 80mm qilib sozlansa chek to'g'ri chiqadi; oddiy printerda ham chop etiladi.
+7. Mijozlar: *Mijozlar* bo'limida shu shaharda buyurtma bergan foydalanuvchilar, ularning telefoni, buyurtmalar soni va umumiy summasi, har birining to'liq buyurtmalari ko'rinadi. Mehmon buyurtmalari (ro'yxatdan o'tmagan) faqat buyurtmalar ro'yxatida telefon bilan ko'rinadi.
+8. Mijoz ilovasida buyurtma holati shahar bosqichining nomi va progress chizig'i bilan ko'rinadi.

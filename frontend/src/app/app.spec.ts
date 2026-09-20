@@ -1,25 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
 
 describe('App', () => {
-  beforeEach(() => {
-    localStorage.clear();
+  it('renders the routed layout through a router outlet', async () => {
     TestBed.configureTestingModule({
       imports: [App],
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
-  });
-
-  it('creates and renders the shell', async () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
-    const http = TestBed.inject(HttpTestingController);
-    http.match((r) => r.url.endsWith('/categories/')).forEach((r) => r.flush([]));
-    await fixture.whenStable();
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-shell')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('router-outlet')).toBeTruthy();
   });
 });

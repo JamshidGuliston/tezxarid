@@ -2,7 +2,7 @@ import { Component, computed, input, signal } from '@angular/core';
 import { Order } from '../../../core/api/models/order.models';
 import { SumPipe } from '../../pipes/sum.pipe';
 import { formatDayMonth } from '../../utils/dates';
-import { orderStatusLabel } from '../../utils/order-status';
+import { stageLabel } from '../../utils/order-status';
 import { unitLabel } from '../../utils/units';
 
 @Component({
@@ -17,6 +17,9 @@ import { unitLabel } from '../../utils/units';
           <span class="status" [class]="'status s-' + order().status">{{ statusLabel() }}</span>
         </div>
         <div class="when">{{ when() }}</div>
+        @if (progress(); as pct) {
+          <div class="progress" role="img" [attr.aria-label]="statusLabel()"><span [style.width.%]="pct"></span></div>
+        }
         <div class="total">{{ order().total | sum }}</div>
       </button>
       @if (open()) {
@@ -38,6 +41,8 @@ import { unitLabel } from '../../utils/units';
     .s-done { background: #e8f7ee; color: #1a7f4b; }
     .s-canceled { background: #fff1f0; color: #b42318; }
     .when { color: #6b6b6b; font-size: .9rem; margin-top: .25rem; }
+    .progress { height: 4px; border-radius: 2px; background: #f0f0f0; margin-top: .4rem; overflow: hidden; }
+    .progress span { display: block; height: 100%; background: #F60; }
     .total { font-weight: 800; margin-top: .25rem; }
     .items { list-style: none; margin: 0; padding: .25rem 1rem .85rem; border-top: 1px solid #f0f0f0; }
     .items li { display: flex; justify-content: space-between; gap: 1rem; padding: .35rem 0; font-size: .9rem; }
@@ -50,7 +55,14 @@ export class OrderCard {
   local = input(false);
   open = signal(false);
 
-  statusLabel = computed(() => (this.local() ? 'Yuborilgan' : orderStatusLabel(this.order().status)));
+  statusLabel = computed(() => (this.local() ? 'Yuborilgan' : stageLabel(this.order())));
+  progress = computed(() => {
+    const o = this.order();
+    if (this.local() || o.is_final || o.is_canceled) return null;
+    const step = o.status_step ?? 0;
+    const total = o.status_total ?? 0;
+    return total > 0 && step > 0 ? Math.round((step / total) * 100) : null;
+  });
   when = computed(() => {
     const o = this.order();
     const day = o.delivery_date ? formatDayMonth(o.delivery_date) : "sana ko'rsatilmagan";

@@ -4,7 +4,7 @@ import { Order } from '../../core/api/models/order.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { OrderHistoryStore } from '../../core/orders/order-history.store';
 import { OrderCard } from '../../shared/ui/order-card/order-card';
-import { isActiveStatus } from '../../shared/utils/order-status';
+import { isActiveOrder } from '../../shared/utils/order-status';
 
 type Tab = 'active' | 'past';
 type LoadState = 'loading' | 'ready' | 'error';
@@ -62,7 +62,7 @@ export class Orders {
 
   isLocal = computed(() => !this.auth.isAuthenticated());
   private source = computed(() => (this.isLocal() ? this.history.orders() : this.server()));
-  shown = computed(() => this.source().filter((o) => (this.tab() === 'active' ? isActiveStatus(o.status) : !isActiveStatus(o.status))));
+  shown = computed(() => this.source().filter((o) => (this.tab() === 'active' ? isActiveOrder(o) : !isActiveOrder(o))));
 
   constructor() {
     // Sign-out mid-visit (failed token refresh) or sign-in must re-sync the source and the load state.

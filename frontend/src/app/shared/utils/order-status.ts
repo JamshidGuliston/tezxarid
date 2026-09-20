@@ -14,3 +14,15 @@ export function orderStatusLabel(status: string): string {
 export function isActiveStatus(status: string): boolean {
   return ACTIVE.has(status);
 }
+
+/** The city may name its own stages: prefer the server's label, fall back to the built-in map. */
+export function stageLabel(order: { status: string; status_label?: string }): string {
+  return order.status_label?.trim() || orderStatusLabel(order.status);
+}
+
+/** Active until the server says the order reached a final or cancelled stage. */
+export function isActiveOrder(order: { status: string; is_final?: boolean; is_canceled?: boolean }): boolean {
+  if (order.is_final || order.is_canceled) return false;
+  if (order.is_final === undefined && order.is_canceled === undefined) return isActiveStatus(order.status);
+  return true;
+}

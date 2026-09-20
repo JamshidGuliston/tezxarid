@@ -54,4 +54,9 @@ export interface Order {
   delivery_end: string | null;   // 'HH:MM'
   created_at: string;
   items: OrderItem[];
+  status_label?: string;
+  status_step?: number;
+  status_total?: number;
+  is_final?: boolean;
+  is_canceled?: boolean;
 }

@@ -28,3 +28,18 @@ class MeSerializer(serializers.ModelSerializer):
         if self.instance is not None and self.instance.is_staff:
             attrs.pop('city', None)
         return attrs
+
+
+class OperatorLoginSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    password = serializers.CharField(max_length=128, trim_whitespace=False)
+
+
+class OperatorUserSerializer(serializers.ModelSerializer):
+    """The operator's own identity, returned with the token pair."""
+    city_name = serializers.CharField(source='city.name', read_only=True, default='')
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'role', 'city', 'city_name']
+        read_only_fields = list(fields)
