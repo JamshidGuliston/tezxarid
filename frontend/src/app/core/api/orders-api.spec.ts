@@ -37,4 +37,12 @@ describe('OrdersApi', () => {
     req.flush({}, { status: 201, statusText: 'Created' });
     http.verify();
   });
+
+  it('listOrders GETs /api/orders/', () => {
+    api.listOrders().subscribe();
+    const req = http.expectOne('http://localhost:8000/api/orders/');
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+    http.verify();
+  });
 });

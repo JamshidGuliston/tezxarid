@@ -6,6 +6,7 @@ import { Checkout } from './checkout';
 import { CartStore } from '../../core/cart/cart.store';
 import { CustomerStore } from '../../core/customer/customer.store';
 import { OrderStore } from '../../core/orders/order.store';
+import { OrderHistoryStore } from '../../core/orders/order-history.store';
 import { DeliveryDay, Order } from '../../core/api/models/order.models';
 
 const DAYS: DeliveryDay[] = [
@@ -85,6 +86,7 @@ describe('Checkout', () => {
 
     expect(cart.count()).toBe(0);
     expect(TestBed.inject(OrderStore).lastOrder()?.id).toBe(12);
+    expect(TestBed.inject(OrderHistoryStore).orders()[0]?.id).toBe(12);
     expect(TestBed.inject(CustomerStore).info().phone).toBe('+998901234567');
     expect(nav).toHaveBeenCalledWith(['/checkout/success']);
   });

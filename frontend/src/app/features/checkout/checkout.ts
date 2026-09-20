@@ -8,6 +8,7 @@ import { OrdersApi } from '../../core/api/orders-api';
 import { DeliveryDay, DeliverySelection, OrderCreatePayload } from '../../core/api/models/order.models';
 import { CartStore } from '../../core/cart/cart.store';
 import { CustomerStore } from '../../core/customer/customer.store';
+import { OrderHistoryStore } from '../../core/orders/order-history.store';
 import { OrderStore } from '../../core/orders/order.store';
 import { SumPipe } from '../../shared/pipes/sum.pipe';
 import { DeliveryPicker } from '../../shared/ui/delivery-picker/delivery-picker';
@@ -144,6 +145,7 @@ export class Checkout {
   cart = inject(CartStore);
   customer = inject(CustomerStore);
   orders = inject(OrderStore);
+  private history = inject(OrderHistoryStore);
 
   readonly chips = ["Qo'ng'iroq qiling", 'Eshik oldiga qoldiring'];
 
@@ -273,6 +275,7 @@ export class Checkout {
     this.api.createOrder(payload).subscribe({
       next: (order) => {
         this.orders.lastOrder.set(order);
+        this.history.add(order);
         this.customer.save({
           name: payload.customer_name, phone: payload.phone, address: payload.address,
           latitude: geo?.lat ?? null, longitude: geo?.lng ?? null,
