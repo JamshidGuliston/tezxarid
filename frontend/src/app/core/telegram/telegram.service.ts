@@ -1,8 +1,7 @@
 import { Injectable } from '@angular/core';
-import { normalizePhone } from '../../shared/ui/phone-input/phone-input';
 
 export interface TelegramUser { id: number; first_name?: string; last_name?: string; username?: string; }
-interface ContactEvent { status?: string; responseUnsafe?: { contact?: { phone_number?: string } }; }
+interface ContactEvent { responseUnsafe?: { contact?: { phone_number?: string } }; }
 /** The subset of window.Telegram.WebApp this app uses (SDK: telegram-web-app.js). */
 export interface TelegramWebApp {
   initData: string;
@@ -25,7 +24,8 @@ export class TelegramService {
   private backHandler: (() => void) | null = null;
 
   readonly isTelegram = this.app !== null;
-  readonly canRequestContact = !!this.app && this.app.isVersionAtLeast('6.9');
+  readonly canRequestContact =
+    !!this.app && typeof this.app.isVersionAtLeast === 'function' && this.app.isVersionAtLeast('6.9');
 
   get initData(): string { return this.app?.initData ?? ''; }
   get user(): TelegramUser | null { return this.app?.initDataUnsafe.user ?? null; }
@@ -44,21 +44,34 @@ export class TelegramService {
     if (visible) this.app.BackButton.show(); else this.app.BackButton.hide();
   }
 
-  /** Ask Telegram for the user's phone; resolves '+998XXXXXXXXX' or null (declined / unsupported / foreign). */
+  private contactPending: Promise<string | null> | null = null;
+
+  /** Ask Telegram for the user's phone; resolves '+998XXXXXXXXX', or null when declined, unsupported,
+   *  not an Uzbek number, or when a request is already pending (the SDK throws on a second one). */
   requestContact(): Promise<string | null> {
     if (!this.app || !this.canRequestContact) return Promise.resolve(null);
+    if (this.contactPending) return this.contactPending;
     const app = this.app;
-    return new Promise((resolve) => {
-      app.requestContact((sent, event) => {
-        const raw = event?.responseUnsafe?.contact?.phone_number ?? '';
-        const digits = normalizePhone(raw);
-        resolve(sent && digits.length === 9 ? `+998${digits}` : null);
-      });
-    });
+    this.contactPending = new Promise<string | null>((resolve) => {
+      try {
+        app.requestContact((sent, event) => {
+          const digits = (event?.responseUnsafe?.contact?.phone_number ?? '').replace(/\D/g, '');
+          const local = digits.startsWith('998') ? digits.slice(3) : digits;
+          resolve(sent && /^\d{9}$/.test(local) ? `+998${local}` : null);
+        });
+      } catch {
+        resolve(null);
+      }
+    }).finally(() => { this.contactPending = null; });
+    return this.contactPending;
   }
 
   openLink(url: string): void {
+    let parsed: URL;
+    try { parsed = new URL(url); } catch { return; }
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return;
     if (!this.app) { window.open(url, '_blank', 'noopener'); return; }
-    if (/^https:\/\/t\.me\//.test(url)) this.app.openTelegramLink(url); else this.app.openLink(url);
+    const host = parsed.hostname.toLowerCase();
+    if (host === 't.me' || host === 'telegram.me') this.app.openTelegramLink(url); else this.app.openLink(url);
   }
 }

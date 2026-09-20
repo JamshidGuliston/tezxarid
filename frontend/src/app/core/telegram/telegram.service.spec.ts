@@ -14,7 +14,7 @@ function fakeWebApp(over: Partial<TelegramWebApp> = {}): TelegramWebApp & { call
       onClick: () => calls.push('back.onClick'), offClick: () => calls.push('back.offClick'),
     },
     isVersionAtLeast: () => true,
-    requestContact: (cb) => cb(true, { status: 'sent', responseUnsafe: { contact: { phone_number: '+998 90 123 45 67' } } }),
+    requestContact: (cb) => cb(true, { responseUnsafe: { contact: { phone_number: '+998 90 123 45 67' } } }),
     openTelegramLink: (url) => calls.push('tg:' + url),
     openLink: (url) => calls.push('link:' + url),
     ...over,
@@ -61,5 +61,51 @@ describe('TelegramService', () => {
   it('returns null when the contact was not shared or is not a +998 number', async () => {
     (window as { Telegram?: unknown }).Telegram = { WebApp: fakeWebApp({ requestContact: (cb) => cb(false) }) };
     await expect(TestBed.inject(TelegramService).requestContact()).resolves.toBeNull();
+  });
+
+  it('routes telegram.me links in-app and ignores non-http schemes', () => {
+    const app = fakeWebApp();
+    (window as { Telegram?: unknown }).Telegram = { WebApp: app };
+    const svc = TestBed.inject(TelegramService);
+    svc.openLink('https://Telegram.me/tezxaridbot');
+    svc.openLink('tg://resolve?domain=x');
+    svc.openLink('mailto:a@b.c');
+    expect(app.calls).toEqual(['tg:https://Telegram.me/tezxaridbot']);
+  });
+
+  it('passes the very handler it registered to offClick', () => {
+    const seen: Array<() => void> = [];
+    const app = fakeWebApp({ BackButton: { show() {}, hide() {}, onClick: (cb) => { seen.push(cb); }, offClick: (cb) => { seen.push(cb); } } });
+    (window as { Telegram?: unknown }).Telegram = { WebApp: app };
+    const svc = TestBed.inject(TelegramService);
+    const first = () => {};
+    const second = () => {};
+    svc.setBackButton(true, first);
+    svc.setBackButton(true, second);
+    expect(seen).toEqual([first, first, second]); // onClick(first), offClick(first), onClick(second)
+  });
+
+  it('never asks the SDK below 6.9, returns null for foreign numbers, and shares a pending request', async () => {
+    (window as { Telegram?: unknown }).Telegram = { WebApp: fakeWebApp({
+      isVersionAtLeast: () => false, requestContact: () => { throw new Error('must not be called'); } }) };
+    await expect(TestBed.inject(TelegramService).requestContact()).resolves.toBeNull();
+
+    TestBed.resetTestingModule();
+    (window as { Telegram?: unknown }).Telegram = { WebApp: fakeWebApp({
+      requestContact: (cb) => cb(true, { responseUnsafe: { contact: { phone_number: '+77012345678' } } }) }) };
+    await expect(TestBed.inject(TelegramService).requestContact()).resolves.toBeNull();
+
+    TestBed.resetTestingModule();
+    let calls = 0;
+    let pending: Parameters<TelegramWebApp['requestContact']>[0] | null = null;
+    (window as { Telegram?: unknown }).Telegram = { WebApp: fakeWebApp({
+      requestContact: (cb) => { calls++; if (pending) throw new Error('WebAppContactRequested'); pending = cb; } }) };
+    const svc = TestBed.inject(TelegramService);
+    const a = svc.requestContact();
+    const b = svc.requestContact();
+    expect(b).toBe(a);
+    pending!(true, { responseUnsafe: { contact: { phone_number: '998901234567' } } });
+    await expect(a).resolves.toBe('+998901234567');
+    expect(calls).toBe(1);
   });
 });
