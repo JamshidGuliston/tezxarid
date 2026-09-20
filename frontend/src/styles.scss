@@ -6,3 +6,12 @@ a { -webkit-tap-highlight-color: transparent; }
    floating controls and sticky bars offset from it. 0 on desktop (nav hidden). */
 :root { --brand: #F60; --tx-nav-h: calc(4rem + env(safe-area-inset-bottom, 0px)); }
 @media (min-width: 900px) { :root { --tx-nav-h: 0px; } }
+
+/* Printing an order: only the receipt block reaches the paper. */
+@media print {
+  body * { visibility: hidden; }
+  tx-order-receipt { display: block !important; }
+  tx-order-receipt .receipt, tx-order-receipt .receipt * { visibility: visible; }
+  tx-order-receipt .receipt { position: absolute; left: 0; top: 0; }
+  @page { size: 80mm auto; margin: 4mm; }
+}

@@ -7,13 +7,16 @@ import { OperatorApi } from '../../core/api/operator-api';
 import { OperatorOrder, OperatorStage } from '../../core/api/models/operator.models';
 import { OrdersApi } from '../../core/api/orders-api';
 import { DeliveryDay } from '../../core/api/models/order.models';
+import { OperatorStore } from '../../core/operator/operator.store';
 import { SumPipe } from '../../shared/pipes/sum.pipe';
+import { OrderReceipt } from './order-receipt';
+import { OrderItemsEditor } from './order-items-editor';
 
 /** One order, open in front of the operator while they are on the phone with the customer. */
 @Component({
   selector: 'tx-order-detail',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, SumPipe, DatePipe],
+  imports: [ReactiveFormsModule, RouterLink, SumPipe, DatePipe, OrderReceipt, OrderItemsEditor],
   template: `
     @if (order(); as o) {
       <div class="page">
@@ -55,12 +58,7 @@ import { SumPipe } from '../../shared/pipes/sum.pipe';
 
         <section class="card">
           <h2>Mahsulotlar</h2>
-          <ul class="items">
-            @for (i of o.items; track i.id) {
-              <li><span>{{ i.name }}</span><span>{{ i.qty }} {{ i.unit }} × {{ i.price_snapshot | sum }}</span></li>
-            }
-          </ul>
-          <div class="total"><span>Jami</span><b>{{ o.total | sum }}</b></div>
+          <tx-order-items-editor [items]="o.items" [disabled]="o.is_terminal" (save)="saveItems($event)" />
         </section>
 
         @if (!o.is_terminal) {
@@ -94,6 +92,8 @@ import { SumPipe } from '../../shared/pipes/sum.pipe';
             } @empty { <li class="muted">Hali yozuv yo'q</li> }
           </ul>
         </section>
+
+        <tx-order-receipt [order]="o" [cityName]="store.operator()?.city_name ?? ''" />
       </div>
     } @else if (error(); as msg) {
       <p class="err" role="alert">{{ msg }}</p>
@@ -143,6 +143,7 @@ export class OrderDetail {
   private api = inject(OperatorApi);
   private ordersApi = inject(OrdersApi);
   private route = inject(ActivatedRoute);
+  store = inject(OperatorStore);
 
   readonly id = Number(this.route.snapshot.paramMap.get('id'));
   order = signal<OperatorOrder | null>(null);
@@ -208,6 +209,15 @@ export class OrderDetail {
       comment: v.comment.trim(), delivery_date: v.delivery_date || null,
       delivery_slot_id: Number(v.delivery_slot_id) || null,
     }).subscribe({
+      next: (order) => { this.apply(order); this.busy.set(false); this.saved.set(true); },
+      error: (err: HttpErrorResponse) => { this.error.set(this.message(err)); this.busy.set(false); },
+    });
+  }
+
+  saveItems(items: { city_product: number; qty: string }[]): void {
+    this.busy.set(true);
+    this.error.set(null);
+    this.api.replaceItems(this.id, items).subscribe({
       next: (order) => { this.apply(order); this.busy.set(false); this.saved.set(true); },
       error: (err: HttpErrorResponse) => { this.error.set(this.message(err)); this.busy.set(false); },
     });
