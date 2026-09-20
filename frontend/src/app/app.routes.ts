@@ -2,23 +2,18 @@ import { Routes } from '@angular/router';
 import { Shell } from './layout/shell/shell';
 import { cartNotEmptyGuard } from './core/guards/cart-not-empty.guard';
 import { orderExistsGuard } from './core/guards/order-exists.guard';
-// import { operatorGuard } from './core/operator/operator.guard'; // Task 7 adds the console components
+import { operatorGuard } from './core/operator/operator.guard';
 
 export const routes: Routes = [
   // Operator console: its own shell, its own session. Listed first so '' does not swallow it.
-  // Task 7 adds the console components
-  // { path: 'order-admin/login', loadComponent: () => import('./features/order-admin/admin-login').then((m) => m.AdminLogin) },
-  // {
-  //   path: 'order-admin',
-  //   canActivate: [operatorGuard],
-  //   loadComponent: () => import('./layout/admin-shell/admin-shell').then((m) => m.AdminShell),
-  //   children: [
-  //     { path: '', loadComponent: () => import('./features/order-admin/orders-board').then((m) => m.OrdersBoard) },
-  //     { path: 'orders/:id', loadComponent: () => import('./features/order-admin/order-detail').then((m) => m.OrderDetail) },
-  //     { path: 'customers', loadComponent: () => import('./features/order-admin/customers').then((m) => m.Customers) },
-  //     { path: 'customers/:id', loadComponent: () => import('./features/order-admin/customer-detail').then((m) => m.CustomerDetail) },
-  //   ],
-  // },
+  { path: 'order-admin/login', loadComponent: () => import('./features/order-admin/admin-login').then((m) => m.AdminLogin) },
+  {
+    path: 'order-admin',
+    canActivate: [operatorGuard],
+    loadComponent: () => import('./layout/admin-shell/admin-shell').then((m) => m.AdminShell),
+    // Tasks 8, 9 and 12 append their own child routes (board, detail, customers, customer detail).
+    children: [],
+  },
   {
     path: '',
     component: Shell,
