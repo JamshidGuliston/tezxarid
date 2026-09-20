@@ -33,6 +33,20 @@ describe('Shell', () => {
     http.verify();
   });
 
+  it('renders the sidebar without categories when the categories request fails', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const fixture = TestBed.createComponent(Shell);
+    fixture.detectChanges();
+    http.expectOne((r) => r.url.endsWith('/categories/')).flush('boom', { status: 500, statusText: 'Server Error' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.sidebar')).toBeTruthy();
+    expect(fixture.componentInstance.categories()).toEqual([]);
+    expect(() => fixture.detectChanges()).not.toThrow();
+    spy.mockRestore();
+  });
+
   it('reloads the sidebar categories when the active city changes', async () => {
     const fixture = TestBed.createComponent(Shell);
     fixture.detectChanges();

@@ -10,6 +10,7 @@ import { OrdersApi } from '../../core/api/orders-api';
 import { DeliveryDay, DeliverySelection, OrderCreatePayload } from '../../core/api/models/order.models';
 import { AuthService } from '../../core/auth/auth.service';
 import { CartStore } from '../../core/cart/cart.store';
+import { CityService } from '../../core/city/city.service';
 import { CustomerStore } from '../../core/customer/customer.store';
 import { OrderHistoryStore } from '../../core/orders/order-history.store';
 import { OrderStore } from '../../core/orders/order.store';
@@ -74,7 +75,7 @@ const MSG = {
             @if (fieldError('phone'); as msg) { <small class="err">{{ msg }}</small> }
           </label>
           @if (saved().length) {
-            <div class="chips saved" aria-label="Saqlangan manzillar">
+            <div class="chips saved" role="group" aria-label="Saqlangan manzillar">
               @for (a of saved(); track a.id) {
                 <button type="button" class="chip" [class.on]="form.controls.address.value === a.address" (click)="useAddress(a)">{{ a.title || a.address }}</button>
               }
@@ -156,6 +157,7 @@ export class Checkout {
   private sum = new SumPipe();
   private auth = inject(AuthService);
   private addressesApi = inject(AddressesApi);
+  private cityService = inject(CityService);
   cart = inject(CartStore);
   customer = inject(CustomerStore);
   orders = inject(OrderStore);
@@ -174,8 +176,10 @@ export class Checkout {
       ? { lat: this.customer.info().latitude!, lng: this.customer.info().longitude! }
       : null,
   );
-  /** True while `geo` still holds the coordinates loaded from CustomerStore, i.e. coordinates
-   *  captured for a *previous* address. A reading taken on this page clears it. */
+  /** True while `geo` holds coordinates tied to a specific stored address — either loaded from
+   *  CustomerStore on init or set by picking a saved address via `useAddress`. Editing the address
+   *  text afterwards then clears `geo`, since it no longer describes what's typed. A reading taken
+   *  on this page (via `locate()`) is not "from store", so editing the address afterwards keeps it. */
   private geoFromStore = signal(this.geo() !== null);
   geoMsg = signal<string | null>(null);
 
@@ -224,8 +228,10 @@ export class Checkout {
     if (this.auth.isAuthenticated()) {
       this.addressesApi.list().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: (list) => {
-          this.saved.set(list);
-          const preferred = list.find((a) => a.is_default);
+          // Addresses saved for another city aren't deliverable here.
+          const mine = list.filter((a) => a.city === this.cityService.cityId);
+          this.saved.set(mine);
+          const preferred = mine.find((a) => a.is_default);
           if (preferred && !this.form.controls.address.value) this.useAddress(preferred);
         },
         error: () => { /* chips are a convenience; typing still works */ },
@@ -267,7 +273,6 @@ export class Checkout {
   }
 
   useAddress(a: Address): void {
-    this.geoFromStore.set(false);                 // these coordinates belong to the chosen address
     this.form.controls.address.setValue(a.address);
     if (a.latitude && a.longitude) {
       this.geo.set({ lat: Number(a.latitude), lng: Number(a.longitude) });
@@ -276,6 +281,10 @@ export class Checkout {
       this.geo.set(null);
       this.geoMsg.set(null);
     }
+    // Set last: setValue() above may run the guard on the *previous* geoFromStore value, which is
+    // fine since we've already resolved geo/geoMsg for this address. From here on, these coordinates
+    // are tied to the address just selected, so the next real edit clears them.
+    this.geoFromStore.set(!!(a.latitude && a.longitude));
   }
 
   fieldError(name: FieldName): string | null {

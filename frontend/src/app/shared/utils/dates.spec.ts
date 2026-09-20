@@ -25,6 +25,7 @@ describe('dates', () => {
   });
 
   it('formats a datetime as day-month, year', () => {
-    expect(formatDayMonthYear('2026-09-20T10:15:00+05:00')).toBe('20-sentabr, 2026');
+    // 12:00 UTC — the same calendar day in every zone from UTC-11 to UTC+11, so this fixture is timezone-robust.
+    expect(formatDayMonthYear('2026-09-20T17:00:00+05:00')).toBe('20-sentabr, 2026');
   });
 });

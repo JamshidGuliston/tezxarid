@@ -23,7 +23,9 @@ const SAVE_FAILED = "Saqlanmadi, qayta urinib ko'ring";
           @for (a of addresses(); track a.id) {
             <div class="row static item">
               <div class="info">
-                <div><b>{{ a.title || 'Manzil' }}</b> @if (a.is_default) { <span class="default">Asosiy</span> }</div>
+                <div><b>{{ a.title || 'Manzil' }}</b> @if (a.is_default) { <span class="default">Asosiy</span> }
+                  @if (a.city !== city.cityId) { <span class="other">{{ cityName(a.city) }}</span> }
+                </div>
                 <div class="muted">{{ a.address }}</div>
               </div>
               <div class="acts">
@@ -58,6 +60,7 @@ const SAVE_FAILED = "Saqlanmadi, qayta urinib ko'ring";
     .info { min-width: 0; }
     .muted { color: #6b6b6b; font-size: .9rem; }
     .default { font-size: .7rem; background: #fff4ec; color: #a34700; border-radius: 999px; padding: .1rem .5rem; margin-left: .4rem; }
+    .other { font-size: .7rem; background: #f2f2f2; color: #666; border-radius: 999px; padding: .1rem .5rem; margin-left: .4rem; }
     .acts { display: flex; flex-direction: column; gap: .35rem; align-items: flex-end; }
     .acts button, .add, .link { border: none; background: none; color: #F60; font: inherit; font-size: .85rem; cursor: pointer; padding: 0; }
     .acts .danger { color: #b42318; }
@@ -73,7 +76,7 @@ const SAVE_FAILED = "Saqlanmadi, qayta urinib ko'ring";
 })
 export class AddressBook {
   private api = inject(AddressesApi);
-  private city = inject(CityService);
+  city = inject(CityService);
 
   addresses = signal<Address[]>([]);
   state = signal<State>('loading');
@@ -86,6 +89,11 @@ export class AddressBook {
   geoMsg = signal<string | null>(null);
 
   constructor() { this.load(); }
+
+  /** Name of a city id for the "saved elsewhere" badge; falls back to the id if the city list hasn't loaded it. */
+  cityName(id: number): string {
+    return this.city.cities().find((c) => c.id === id)?.name ?? `#${id}`;
+  }
 
   load(): void {
     this.state.set('loading');

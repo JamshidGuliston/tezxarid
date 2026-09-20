@@ -4,6 +4,7 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { Router, provideRouter } from '@angular/router';
 import { Checkout } from './checkout';
 import { CartStore } from '../../core/cart/cart.store';
+import { CityService } from '../../core/city/city.service';
 import { CustomerStore } from '../../core/customer/customer.store';
 import { OrderStore } from '../../core/orders/order.store';
 import { OrderHistoryStore } from '../../core/orders/order-history.store';
@@ -256,6 +257,7 @@ describe('Checkout', () => {
 
   it('offers saved addresses when signed in and preselects the default one', async () => {
     TestBed.inject(TokenStore).set({ access: 'a', refresh: 'r' });
+    TestBed.inject(CityService).setCity({ id: 1, name: 'Guliston', slug: 'guliston' });
     const fixture = TestBed.createComponent(Checkout);
     fixture.detectChanges();
     http.expectOne((r) => r.url.endsWith('/delivery-slots/')).flush(DAYS);
@@ -279,5 +281,55 @@ describe('Checkout', () => {
   it('does not ask for saved addresses as a guest', async () => {
     await create();
     http.expectNone((r) => r.url.endsWith('/addresses/'));
+  });
+
+  it('scopes saved addresses to the active city', async () => {
+    TestBed.inject(TokenStore).set({ access: 'a', refresh: 'r' });
+    TestBed.inject(CityService).setCity({ id: 1, name: 'Guliston', slug: 'guliston' });
+    const fixture = TestBed.createComponent(Checkout);
+    fixture.detectChanges();
+    http.expectOne((r) => r.url.endsWith('/delivery-slots/')).flush(DAYS);
+    http.expectOne((r) => r.url.endsWith('/addresses/')).flush([
+      { id: 1, city: 1, title: 'Uy', address: 'Chilonzor 5', latitude: null, longitude: null, is_default: true, created_at: '' },
+      { id: 2, city: 2, title: 'Boshqa shahar', address: 'Boshqa 1', latitude: null, longitude: null, is_default: true, created_at: '' },
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+    expect(c.form.controls.address.value).toBe('Chilonzor 5');
+    const chips = fixture.nativeElement.querySelectorAll('.saved .chip') as NodeListOf<HTMLButtonElement>;
+    expect(chips.length).toBe(1);
+  });
+
+  it('drops coordinates from a preselected saved address once the address is edited', async () => {
+    TestBed.inject(TokenStore).set({ access: 'a', refresh: 'r' });
+    TestBed.inject(CityService).setCity({ id: 1, name: 'Guliston', slug: 'guliston' });
+    const fixture = TestBed.createComponent(Checkout);
+    fixture.detectChanges();
+    http.expectOne((r) => r.url.endsWith('/delivery-slots/')).flush(DAYS);
+    http.expectOne((r) => r.url.endsWith('/addresses/')).flush([
+      { id: 1, city: 1, title: 'Uy', address: 'Chilonzor 5', latitude: '41.311081', longitude: '69.240562', is_default: true, created_at: '' },
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const c = fixture.componentInstance;
+    expect(c.geo()).toEqual({ lat: 41.311081, lng: 69.240562 });
+    c.form.controls.address.setValue('Chilonzor 5, 3-podyezd');
+    expect(c.geo()).toBeNull();
+  });
+
+  it('has a group role on the saved-address chips for assistive tech', async () => {
+    TestBed.inject(TokenStore).set({ access: 'a', refresh: 'r' });
+    TestBed.inject(CityService).setCity({ id: 1, name: 'Guliston', slug: 'guliston' });
+    const fixture = TestBed.createComponent(Checkout);
+    fixture.detectChanges();
+    http.expectOne((r) => r.url.endsWith('/delivery-slots/')).flush(DAYS);
+    http.expectOne((r) => r.url.endsWith('/addresses/')).flush([
+      { id: 1, city: 1, title: 'Uy', address: 'Chilonzor 5', latitude: null, longitude: null, is_default: true, created_at: '' },
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const group = fixture.nativeElement.querySelector('.chips.saved') as HTMLElement;
+    expect(group.getAttribute('role')).toBe('group');
   });
 });

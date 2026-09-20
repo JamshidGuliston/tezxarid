@@ -9,8 +9,9 @@ import { CartStore } from '../../core/cart/cart.store';
 import { CityService } from '../../core/city/city.service';
 import { CustomerStore } from '../../core/customer/customer.store';
 
+// 12:00 UTC — the same calendar day in every zone from UTC-11 to UTC+11, so this fixture is timezone-robust.
 const ME = { id: 7, telegram_id: 7, first_name: 'Aziz', last_name: 'Karimov', phone: '+998901234567',
-  city: 1, date_joined: '2026-09-20T10:15:00+05:00' };
+  city: 1, date_joined: '2026-09-20T17:00:00+05:00' };
 
 describe('Profile', () => {
   let http: HttpTestingController;
@@ -24,6 +25,8 @@ describe('Profile', () => {
     city.cities.set([{ id: 1, name: 'Guliston', slug: 'guliston' }, { id: 2, name: 'Samarqand', slug: 'samarqand' }]);
     city.setCity({ id: 1, name: 'Guliston', slug: 'guliston' });
   });
+
+  afterEach(() => vi.restoreAllMocks());
 
   async function create() {
     const fixture = TestBed.createComponent(Profile);
@@ -53,6 +56,7 @@ describe('Profile', () => {
     TestBed.inject(TokenStore).set({ access: 'a', refresh: 'r' });
     TestBed.inject(AuthService).me.set(ME);
     const fixture = await create();
+    http.expectOne((r) => r.url.endsWith('/addresses/')).flush([]); // mounted AddressBook's list request
     expect(text(fixture)).toContain('Aziz Karimov');
     expect(text(fixture)).toContain('20-sentabr, 2026');
     const c = fixture.componentInstance;
@@ -90,5 +94,40 @@ describe('Profile', () => {
     expect(text(fixture)).not.toContain("Qo'llab-quvvatlash");
     expect(text(fixture)).not.toContain('Ommaviy oferta');
     expect(fixture.nativeElement.querySelector('button.tg-phone')).toBeNull(); // not inside Telegram
+  });
+
+  it('preselects the active city in the select', async () => {
+    const fixture = await create();
+    TestBed.inject(CityService).setCity({ id: 2, name: 'Samarqand', slug: 'samarqand' });
+    const c = fixture.componentInstance;
+    c.edit('city');
+    fixture.detectChanges();
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    expect(select.value).toBe('2');
+    expect(select.selectedIndex).toBe(1);
+  });
+
+  it('shows a save-failed banner and keeps the editor open when saving the name fails', async () => {
+    TestBed.inject(TokenStore).set({ access: 'a', refresh: 'r' });
+    TestBed.inject(AuthService).me.set(ME);
+    const fixture = await create();
+    http.expectOne((r) => r.url.endsWith('/addresses/')).flush([]); // mounted AddressBook's list request
+    const c = fixture.componentInstance;
+    c.edit('name'); c.nameDraft.set('Anvar Aliyev');
+    const done = c.saveName();
+    const req = http.expectOne((r) => r.url.endsWith('/auth/me/') && r.method === 'PATCH');
+    req.flush('boom', { status: 500, statusText: 'Server Error' });
+    await done;
+    fixture.detectChanges();
+    expect(text(fixture)).toContain('Saqlanmadi');
+    expect(c.editing()).toBe('name');
+  });
+
+  it("shows a hint when Telegram doesn't provide a phone number", async () => {
+    const fixture = await create();
+    vi.spyOn(TestBed.inject(AuthService), 'requestPhone').mockResolvedValue(null);
+    const c = fixture.componentInstance;
+    await c.takePhoneFromTelegram();
+    expect(c.phoneHint()).toBe("Telegram telefonni bermadi, qo'lda kiriting");
   });
 });

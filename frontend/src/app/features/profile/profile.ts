@@ -39,20 +39,20 @@ export function initialsOf(name: string): string {
 
       <section class="rows">
         <button type="button" class="row" (click)="edit('name')">
-          <span>Ism</span><span class="val">{{ name() || 'Kiritilmagan' }} ›</span>
+          <span>Ism</span><span class="val">{{ name() || 'Kiritilmagan' }} <span aria-hidden="true">›</span></span>
         </button>
         @if (editing() === 'name') {
           <div class="editor">
             <input #nameBox [value]="nameDraft()" (input)="nameDraft.set(nameBox.value)" maxlength="120" placeholder="Ism va familiya" aria-label="Ism" />
             <div class="actions">
               <button type="button" class="primary" [disabled]="saving()" (click)="saveName()">Saqlash</button>
-              <button type="button" (click)="cancel()">Bekor</button>
+              <button type="button" [disabled]="saving()" (click)="cancel()">Bekor</button>
             </div>
           </div>
         }
 
         <button type="button" class="row" (click)="edit('phone')">
-          <span>Telefon</span><span class="val">{{ phone() || 'Kiritilmagan' }} ›</span>
+          <span>Telefon</span><span class="val">{{ phone() || 'Kiritilmagan' }} <span aria-hidden="true">›</span></span>
         </button>
         @if (editing() === 'phone') {
           <div class="editor">
@@ -63,18 +63,18 @@ export function initialsOf(name: string): string {
             @if (phoneHint(); as hint) { <small class="muted" role="status">{{ hint }}</small> }
             <div class="actions">
               <button type="button" class="primary" [disabled]="saving()" (click)="savePhone()">Saqlash</button>
-              <button type="button" (click)="cancel()">Bekor</button>
+              <button type="button" [disabled]="saving()" (click)="cancel()">Bekor</button>
             </div>
           </div>
         }
 
         <button type="button" class="row" (click)="edit('city')">
-          <span>Shahar</span><span class="val">{{ city.activeCity()?.name || '—' }} ›</span>
+          <span>Shahar</span><span class="val">{{ city.activeCity()?.name || '—' }} <span aria-hidden="true">›</span></span>
         </button>
         @if (editing() === 'city') {
           <div class="editor">
-            <select #citySel [value]="cityDraft() ?? ''" (change)="cityDraft.set(+citySel.value)" aria-label="Shahar">
-              @for (c of city.cities(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+            <select #citySel (change)="cityDraft.set(+citySel.value)" aria-label="Shahar">
+              @for (c of city.cities(); track c.id) { <option [value]="c.id" [selected]="c.id === cityDraft()">{{ c.name }}</option> }
             </select>
             <div class="actions">
               <button type="button" class="primary" [disabled]="saving()" (click)="saveCity()">Saqlash</button>
@@ -85,7 +85,7 @@ export function initialsOf(name: string): string {
 
         @if (!auth.isAuthenticated()) {
           <button type="button" class="row" (click)="edit('address')">
-            <span>Manzil</span><span class="val">{{ customer.info().address || 'Kiritilmagan' }} ›</span>
+            <span>Manzil</span><span class="val">{{ customer.info().address || 'Kiritilmagan' }} <span aria-hidden="true">›</span></span>
           </button>
           @if (editing() === 'address') {
             <div class="editor">
@@ -104,10 +104,10 @@ export function initialsOf(name: string): string {
       @if (supportUrl || offerUrl) {
         <section class="rows">
           @if (supportUrl) {
-            <a class="row" [href]="supportUrl" target="_blank" rel="noopener" (click)="open($event, supportUrl)"><span>Qo'llab-quvvatlash</span><span class="val">›</span></a>
+            <a class="row" [href]="supportUrl" target="_blank" rel="noopener" (click)="open($event, supportUrl)"><span>Qo'llab-quvvatlash</span><span class="val"><span aria-hidden="true">›</span></span></a>
           }
           @if (offerUrl) {
-            <a class="row" [href]="offerUrl" target="_blank" rel="noopener" (click)="open($event, offerUrl)"><span>Ommaviy oferta</span><span class="val">›</span></a>
+            <a class="row" [href]="offerUrl" target="_blank" rel="noopener" (click)="open($event, offerUrl)"><span>Ommaviy oferta</span><span class="val"><span aria-hidden="true">›</span></span></a>
           }
         </section>
       }
@@ -214,13 +214,14 @@ export class Profile {
     const target = this.city.cities().find((c) => c.id === this.cityDraft());
     if (!target || target.id === this.city.cityId) { this.editing.set(null); return; }
     if (this.cart.count() > 0 && !window.confirm("Shahar o'zgarsa savat tozalanadi. Davom etasizmi?")) return;
-    this.cart.clear();
-    this.city.setCity(target);
-    if (this.auth.isAuthenticated()) {
-      try { await this.auth.updateMe({ city: target.id }); } catch { /* the device choice still applies */ }
-    }
-    this.editing.set(null);
-    void this.router.navigateByUrl('/');
+    await this.persist(async () => {
+      this.cart.clear();
+      this.city.setCity(target);
+      if (this.auth.isAuthenticated()) {
+        try { await this.auth.updateMe({ city: target.id }); } catch { /* the device choice still applies */ }
+      }
+    });
+    if (!this.error()) void this.router.navigateByUrl('/');
   }
 
   saveAddress(): void {
