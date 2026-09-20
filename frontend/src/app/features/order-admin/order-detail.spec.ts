@@ -111,4 +111,15 @@ describe('OrderDetail', () => {
     expect(fixture.nativeElement.querySelector('button.confirm')).toBeNull();
     expect(fixture.componentInstance.form.disabled).toBe(true);
   });
+
+  it('sends replaced items to the server', async () => {
+    const fixture = await create();
+    fixture.componentInstance.saveItems([{ city_product: 11, qty: '2.000' }]);
+    const req = http.expectOne((r) => r.url.endsWith('/operator/orders/7/items/') && r.method === 'PUT');
+    expect(req.request.body).toEqual({ items: [{ city_product: 11, qty: '2.000' }] });
+    req.flush({ ...ORDER, total: '38600.00' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain("38 600 so'm");
+  });
 });
