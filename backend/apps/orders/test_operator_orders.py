@@ -102,6 +102,7 @@ def test_order_detail_has_items_customer_and_events(operator, city, product):
     assert body['items'][0]['name'] == 'Olma' and body['items'][0]['unit'] == 'kg'
     assert body['items'][0]['line_total'] == '19300.00'
     assert body['delivery_window'] == '09:00 – 12:00'
+    assert body['delivery_start'] == '09:00' and body['delivery_end'] == '12:00'   # no seconds on the receipt
     assert body['events'] == []
 
 

@@ -8,7 +8,6 @@ import { OperatorOrder, OperatorStage } from '../../core/api/models/operator.mod
 import { OrdersApi } from '../../core/api/orders-api';
 import { DeliveryDay } from '../../core/api/models/order.models';
 import { OperatorStore } from '../../core/operator/operator.store';
-import { SumPipe } from '../../shared/pipes/sum.pipe';
 import { OrderReceipt } from './order-receipt';
 import { OrderItemsEditor } from './order-items-editor';
 
@@ -16,7 +15,7 @@ import { OrderItemsEditor } from './order-items-editor';
 @Component({
   selector: 'tx-order-detail',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, SumPipe, DatePipe, OrderReceipt, OrderItemsEditor],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, OrderReceipt, OrderItemsEditor],
   template: `
     @if (order(); as o) {
       <div class="page">

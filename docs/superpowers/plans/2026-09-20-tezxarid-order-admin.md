@@ -4028,3 +4028,33 @@ git commit -m "docs: operator console deploy steps and Plan 4 post-implementatio
 **Placeholder scan:** no TBD/TODO; every step carries the code or the exact command it needs.
 
 **Type consistency:** `OperatorSession`/`OperatorUser` (Task 6) are what `OperatorApi.login` returns (Task 7) and what `OperatorStore.set` takes. `OperatorOrder`, `OperatorOrderRow`, `OperatorStage`, `OperatorProduct`, `OperatorCustomer` (Task 6) match the serializers in Tasks 3–5 field for field, including `stage`, `stage_id`, `stage_name`, `is_terminal`, `delivery_window`, `items_count`, `line_total`, `orders_count`, `orders_total`, `last_order_at`. `OperatorApi` method names used later: `stages`, `orders`, `order`, `patchOrder`, `replaceItems`, `moveStage`, `logEvent`, `products`, `customers`, `customer`. `beep()` (Task 8) is used only by the board. `stageLabel`/`isActiveOrder` (Task 13) are additions next to the existing `orderStatusLabel`/`isActiveStatus`, which stay for the device history.
+
+## Post-implementation notes (2026-09-20)
+
+Executed on `feat/plan-4-order-admin` with subagent-driven development, several tasks in parallel where file ownership was disjoint (backend and frontend branches of the plan ran side by side).
+
+**Test counts.** Backend `pytest -q`: **147 passed** (121 before the plan). Frontend `ng test`: **203 passed / 52 spec files** (166 before). Production build: initial 288 kB raw / 83 kB transfer, new lazy chunks `order-detail` , `orders-board`, `customers`, `customer-detail`, `admin-shell`, `admin-login`.
+
+**API smoke** (dev server, city Samarqand, operator `op`): login returns the token pair plus `{username, role, city_name}`; `/api/operator/stages/` lists the six seeded stages; `/api/operator/orders/` returns the city's orders with per-stage counts; PATCH updates a comment and writes an `edited` event; `PUT /items/` replaces the lines and recalculates the total (57 500 → 36 000); `POST /stage/` moves to Tasdiqlandi and logs the transition; cancelling without a reason returns 400; an anonymous call returns 401.
+
+**Browser smoke** (`scratchpad/smoke4.js`, headless Edge): `/order-admin` redirects to the login page; a wrong password shows "Login yoki parol noto'g'ri."; signing in lands on the board with stage tabs and live counters (Yangi 1, Tasdiqlandi 2); the order page shows the `tel:` call link, the item editor (stepping a line moved the total 34 400 → 46 650 live), the confirm button moving the stage to Tasdiqlandi, the event log, and the hidden 80 mm receipt block carrying the shop line, items, total and payment type; the customers page renders; signing out returns to the login page; the customer app's `/orders` still works for guests.
+
+**Migration.** `0004_order_stages` seeds six stages per city and maps every existing order off the old `status` string (dev DB: 3 orders, all mapped), then drops the column; `0005_order_event` adds the audit log.
+
+**Deviations from the plan (all reported by the implementers).**
+- Task 1: the plan's `0003_order_stages` became `0004_order_stages`; the stage-progress test posts a next-day delivery because today's early slots are closed after 09:00 local time.
+- Task 6: guard specs call `operatorGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot)` to satisfy `CanActivateFn`'s signature, matching the existing guard specs.
+- Task 8 + follow-up: the board's `debounceTime(250)` was first removed to make the specs pass, then restored with specs that advance fake timers past it, plus a test proving rapid typing collapses into one request.
+- Task 9: the header gained a plain-text customer name next to the order number, because a reactive-form input's value never appears in `textContent`.
+- Task 10: the item-editor spec uses fake timers for the debounced product search.
+- Task 4 follow-up: stage tab counts now respect the `date` and `q` filters (not `stage`), so the numbers match the filtered list.
+- Task 5: `orders_total` is quantised to two decimals so it serialises as `'15000.00'`.
+- Finishing pass: `OperatorOrderSerializer` formats `delivery_start`/`delivery_end` as `HH:MM` (the receipt printed `10:00:00`); unused `SumPipe` import dropped from `OrderDetail`; the board's `counts` signal widened to `Record<string, number | undefined>` to clear an NG8102 warning.
+
+**Carry-overs.**
+1. Guest orders have no `user`, so they never appear in the customers directory; only their phone shows on the order.
+2. The console polls every 15 s. A busy city may want server-sent events or a longer interval.
+3. `OrderStage` editing is superadmin-only through Django admin; the console has no stage settings screen.
+4. The operator cannot create an order by phone; the customer must place it in the Mini App.
+5. `OrderEvent` records `edited` with a field-name summary only, not the old and new values.
+6. The receipt prints from the browser; there is no ESC/POS path for a dedicated thermal printer.

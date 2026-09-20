@@ -76,7 +76,7 @@ export class OrdersBoard {
 
   stages = signal<OperatorStage[]>([]);
   orders = signal<OperatorOrderRow[]>([]);
-  counts = signal<Record<string, number>>({});
+  counts = signal<Record<string, number | undefined>>({});
   stale = signal(false);
   stage = signal('');
   query = signal('');

@@ -63,6 +63,8 @@ class OperatorOrderListSerializer(serializers.ModelSerializer):
 
 class OperatorOrderSerializer(serializers.ModelSerializer):
     stage = serializers.CharField(source='stage.code', read_only=True, default='')
+    delivery_start = serializers.TimeField(format='%H:%M', read_only=True)
+    delivery_end = serializers.TimeField(format='%H:%M', read_only=True)
     stage_name = serializers.CharField(source='stage.name', read_only=True, default='')
     stage_id = serializers.IntegerField(read_only=True)
     is_terminal = serializers.SerializerMethodField()
