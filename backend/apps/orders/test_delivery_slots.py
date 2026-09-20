@@ -247,3 +247,38 @@ def test_guest_order_throttle_is_attached():
     from apps.orders.views import GuestOrderThrottle, OrderListCreateView
     assert OrderListCreateView.throttle_classes == [GuestOrderThrottle]
     assert GuestOrderThrottle.rate == '60/min'
+
+
+def _auth_client(user):
+    from rest_framework_simplejwt.tokens import RefreshToken
+    client = APIClient()
+    client.credentials(HTTP_AUTHORIZATION=f'Bearer {RefreshToken.for_user(user).access_token}')
+    return client
+
+
+@pytest.mark.django_db
+def test_create_order_fills_empty_user_phone(city, slots, shop, monkeypatch):
+    from django.contrib.auth import get_user_model
+    _, evening = slots
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))
+    user = get_user_model().objects.create_user(username='tg_5', telegram_id=5)
+    resp = _auth_client(user).post('/api/orders/', order_payload(
+        shop, phone='+998901234567', delivery_date='2026-09-13', delivery_slot_id=evening.id),
+        format='json', HTTP_X_CITY_ID=str(city.id))
+    assert resp.status_code == 201, resp.json()
+    user.refresh_from_db()
+    assert user.phone == '+998901234567'
+
+
+@pytest.mark.django_db
+def test_create_order_keeps_existing_user_phone(city, slots, shop, monkeypatch):
+    from django.contrib.auth import get_user_model
+    _, evening = slots
+    monkeypatch.setattr('apps.orders.slots.local_now', lambda: at(8, 0))
+    user = get_user_model().objects.create_user(username='tg_6', telegram_id=6, phone='+998900000000')
+    resp = _auth_client(user).post('/api/orders/', order_payload(
+        shop, phone='+998901234567', delivery_date='2026-09-13', delivery_slot_id=evening.id),
+        format='json', HTTP_X_CITY_ID=str(city.id))
+    assert resp.status_code == 201, resp.json()
+    user.refresh_from_db()
+    assert user.phone == '+998900000000'

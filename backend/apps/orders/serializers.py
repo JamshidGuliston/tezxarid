@@ -1,13 +1,13 @@
 from decimal import Decimal
-from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import transaction
 from rest_framework import serializers
 from apps.catalog.models import CityProduct
+from apps.common.validators import PHONE_VALIDATOR
 from apps.users.models import Address
 from .models import DeliverySlot, Order, OrderItem
 from . import slots
 
-PHONE_VALIDATOR = RegexValidator(r'^\+?\d{9,15}$', 'Enter a valid phone number.')
 MAX_ORDER_ITEMS = 100   # the endpoint is anonymous: bound the per-request work
 LAT_VALIDATORS = [MinValueValidator(Decimal('-90')), MaxValueValidator(Decimal('90'))]
 LNG_VALIDATORS = [MinValueValidator(Decimal('-180')), MaxValueValidator(Decimal('180'))]
@@ -128,6 +128,9 @@ class OrderCreateSerializer(serializers.Serializer):
             delivery_end=slot.end_time,
             total=total,
         )
+        if user is not None and not user.phone:
+            user.phone = validated_data['phone']
+            user.save(update_fields=['phone'])
         OrderItem.objects.bulk_create([
             OrderItem(order=order, city_product=i['city_product'],
                       qty=i['qty'], price_snapshot=i['city_product'].price)
