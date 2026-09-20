@@ -1,7 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { catchError, of, switchMap } from 'rxjs';
 import { CatalogApi } from '../../core/api/catalog-api';
 import { Category } from '../../core/api/models/catalog.models';
+import { CityService } from '../../core/city/city.service';
 import { AppHeader } from '../../shared/ui/app-header/app-header';
 import { BackButton } from '../../shared/ui/back-button/back-button';
 import { BottomNav } from '../../shared/ui/bottom-nav/bottom-nav';
@@ -32,14 +35,17 @@ import { FloatingCart } from '../../shared/ui/floating-cart/floating-cart';
 })
 export class Shell {
   private api = inject(CatalogApi);
+  private city = inject(CityService);
   categories = signal<Category[]>([]);
 
   constructor() {
-    // app.config.ts has already attempted city resolution; if it failed, activeCity is null
-    // and this request will 400 — the catalog then renders empty (see plan carry-overs).
-    this.api.getCategories().subscribe({
-      next: (list) => this.categories.set(list),
-      error: (err) => console.error('Categories failed', err),
-    });
+    // app.config.ts has already attempted city resolution. Reload the sidebar whenever the
+    // active city changes (Profile lets the user switch it); a failed load renders empty.
+    toObservable(this.city.activeCity)
+      .pipe(
+        switchMap(() => this.api.getCategories().pipe(catchError((err) => { console.error('Categories failed', err); return of([] as Category[]); }))),
+        takeUntilDestroyed(),
+      )
+      .subscribe((list) => this.categories.set(list));
   }
 }

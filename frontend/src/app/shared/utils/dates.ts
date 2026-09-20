@@ -30,3 +30,9 @@ export function formatDayMonth(iso: string): string {
   const d = parseIsoDate(iso);
   return `${d.getDate()}-${MONTHS[d.getMonth()] ?? ''}`;
 }
+
+/** '2026-09-20T10:15:00+05:00' → '20-sentabr, 2026' (absolute instant, shown in the device's zone). */
+export function formatDayMonthYear(isoDateTime: string): string {
+  const d = new Date(isoDateTime);
+  return `${d.getDate()}-${MONTHS[d.getMonth()] ?? ''}, ${d.getFullYear()}`;
+}

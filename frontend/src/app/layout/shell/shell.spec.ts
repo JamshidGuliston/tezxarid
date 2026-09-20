@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { Shell } from './shell';
+import { CityService } from '../../core/city/city.service';
 
 describe('Shell', () => {
   let http: HttpTestingController;
@@ -29,6 +30,20 @@ describe('Shell', () => {
     expect(el.querySelector('tx-bottom-nav')).toBeTruthy();
     expect(el.querySelector('tx-back-button')).toBeTruthy();
     expect(el.querySelector('.sidebar')!.textContent).toContain('Mevalar');
+    http.verify();
+  });
+
+  it('reloads the sidebar categories when the active city changes', async () => {
+    const fixture = TestBed.createComponent(Shell);
+    fixture.detectChanges();
+    http.expectOne((r) => r.url.endsWith('/categories/')).flush([{ id: 3, name: 'Mevalar', image: '', sort_order: 1 }]);
+    await fixture.whenStable();
+    TestBed.inject(CityService).setCity({ id: 2, name: 'Samarqand', slug: 'samarqand' });
+    await fixture.whenStable();
+    http.expectOne((r) => r.url.endsWith('/categories/')).flush([{ id: 9, name: 'Non', image: '', sort_order: 1 }]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.sidebar')!.textContent).toContain('Non');
     http.verify();
   });
 });
