@@ -102,4 +102,27 @@ describe('AuthService', () => {
     req.flush({ ...ME, phone: '+998901112233' });
     await expect(done).resolves.toBe('+998901112233');
   });
+
+  it('requestPhone keeps the number on the device when the server patch fails', async () => {
+    installTelegram();
+    TestBed.inject(TokenStore).set({ access: 'a', refresh: 'r' });
+    const svc = TestBed.inject(AuthService);
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const done = svc.requestPhone();
+    await new Promise((r) => setTimeout(r));
+    const req = http.expectOne((r) => r.url.endsWith('/auth/me/') && r.method === 'PATCH');
+    req.flush('boom', { status: 500, statusText: 'Server Error' });
+    await expect(done).resolves.toBe('+998901112233');
+    expect(TestBed.inject(CustomerStore).info().phone).toBe('+998901112233');
+    warn.mockRestore();
+  });
+
+  it('clears me when signed out from under it (e.g. a failed token refresh)', () => {
+    TestBed.inject(TokenStore).set({ access: 'a', refresh: 'r' });
+    const svc = TestBed.inject(AuthService);
+    svc.me.set(ME);
+    TestBed.inject(TokenStore).clear();
+    TestBed.tick();
+    expect(svc.me()).toBeNull();
+  });
 });

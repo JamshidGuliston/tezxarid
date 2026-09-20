@@ -19,9 +19,13 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
+    // Interceptors run outer→inner on the request path but inner→outer on the error path
+    // (Angular builds the chain with reduceRight), so authInterceptor must be innermost:
+    // its refresh-and-retry then resolves before errorInterceptor ever sees the failure,
+    // and only errors that survive the retry (or have no refresh token to try) reach it.
     provideHttpClient(
       withFetch(),
-      withInterceptors([cityInterceptor, authInterceptor, errorInterceptor]),
+      withInterceptors([cityInterceptor, errorInterceptor, authInterceptor]),
     ),
     // Before any routed component loads: tell Telegram we're ready, resolve the active city
     // (X-City-Id on every city-scoped request) and, inside Telegram, sign the user in.

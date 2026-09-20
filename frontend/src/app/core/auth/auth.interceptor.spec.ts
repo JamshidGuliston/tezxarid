@@ -72,4 +72,36 @@ describe('authInterceptor', () => {
     expect(tokens.isAuthenticated()).toBe(false);
     ctrl.verify();
   });
+
+  it('propagates the retried request error as itself, not the original 401', () => {
+    tokens.set({ access: 'old', refresh: 'r' });
+    let status = 0;
+    http.get(`${API}/orders/`).subscribe({ error: (e) => (status = e.status) });
+    ctrl.expectOne(`${API}/orders/`).flush({}, { status: 401, statusText: 'Unauthorized' });
+    ctrl.expectOne(`${API}/auth/token/refresh/`).flush({ access: 'new' });
+    ctrl.expectOne(`${API}/orders/`).flush({}, { status: 500, statusText: 'Server Error' });
+    expect(status).toBe(500);
+    expect(tokens.isAuthenticated()).toBe(true);
+    expect(tokens.access()).toBe('new');
+    ctrl.verify();
+  });
+
+  it('passes a 500 through with no refresh attempt when signed in', () => {
+    tokens.set({ access: 'old', refresh: 'r' });
+    let status = 0;
+    http.get(`${API}/orders/`).subscribe({ error: (e) => (status = e.status) });
+    ctrl.expectOne(`${API}/orders/`).flush({}, { status: 500, statusText: 'Server Error' });
+    ctrl.expectNone(`${API}/auth/token/refresh/`);
+    expect(status).toBe(500);
+    ctrl.verify();
+  });
+
+  it('passes a 401 straight through with no refresh attempt when there are no tokens', () => {
+    let status = 0;
+    http.get(`${API}/orders/`).subscribe({ error: (e) => (status = e.status) });
+    ctrl.expectOne(`${API}/orders/`).flush({}, { status: 401, statusText: 'Unauthorized' });
+    ctrl.expectNone(`${API}/auth/token/refresh/`);
+    expect(status).toBe(401);
+    ctrl.verify();
+  });
 });

@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, effect, inject, signal } from '@angular/core';
 import { firstValueFrom, timeout } from 'rxjs';
 import { AuthApi } from '../api/auth-api';
 import { Me, MePatch } from '../api/models/auth.models';
@@ -20,6 +20,11 @@ export class AuthService {
 
   readonly me = signal<Me | null>(null);
   readonly isAuthenticated = this.tokens.isAuthenticated;
+
+  constructor() {
+    // Signed out from under us (e.g. a failed token refresh clears the tokens) — drop the stale profile.
+    effect(() => { if (!this.isAuthenticated()) this.me.set(null); });
+  }
 
   /** Called from the app initializer. Never rejects: any failure leaves the user a guest. */
   async initFromTelegram(): Promise<void> {
@@ -59,8 +64,16 @@ export class AuthService {
   async requestPhone(): Promise<string | null> {
     const phone = await this.telegram.requestContact();
     if (!phone) return null;
-    if (this.isAuthenticated()) await this.updateMe({ phone });
-    else this.customer.save({ phone });
+    if (this.isAuthenticated()) {
+      try {
+        await this.updateMe({ phone });
+      } catch (err) {
+        console.warn('Phone save failed; kept on device', err);
+        this.customer.save({ phone });
+      }
+    } else {
+      this.customer.save({ phone });
+    }
     return phone;
   }
 

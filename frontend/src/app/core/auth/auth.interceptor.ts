@@ -28,8 +28,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         shareReplay(1),
       );
       return tokens.refreshing.pipe(
-        switchMap((access) => next(withBearer(req, access))),
         catchError(() => throwError(() => err)),
+        switchMap((access) => next(withBearer(req, access))),
       );
     }),
   );
