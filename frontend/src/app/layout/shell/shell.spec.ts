@@ -27,6 +27,7 @@ describe('Shell', () => {
     expect(el.querySelector('router-outlet')).toBeTruthy();
     expect(el.querySelector('tx-cart-panel')).toBeTruthy();
     expect(el.querySelector('tx-bottom-nav')).toBeTruthy();
+    expect(el.querySelector('tx-back-button')).toBeTruthy();
     expect(el.querySelector('.sidebar')!.textContent).toContain('Mevalar');
     http.verify();
   });

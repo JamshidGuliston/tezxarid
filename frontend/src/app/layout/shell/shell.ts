@@ -3,6 +3,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { CatalogApi } from '../../core/api/catalog-api';
 import { Category } from '../../core/api/models/catalog.models';
 import { AppHeader } from '../../shared/ui/app-header/app-header';
+import { BackButton } from '../../shared/ui/back-button/back-button';
 import { BottomNav } from '../../shared/ui/bottom-nav/bottom-nav';
 import { CartPanel } from '../../shared/ui/cart-panel/cart-panel';
 import { FloatingCart } from '../../shared/ui/floating-cart/floating-cart';
@@ -10,7 +11,7 @@ import { FloatingCart } from '../../shared/ui/floating-cart/floating-cart';
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, AppHeader, BottomNav, CartPanel, FloatingCart],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, AppHeader, BackButton, BottomNav, CartPanel, FloatingCart],
   template: `
     <tx-app-header />
     <div class="body">
@@ -23,6 +24,7 @@ import { FloatingCart } from '../../shared/ui/floating-cart/floating-cart';
       <main class="main"><router-outlet /></main>
       <aside class="cart"><tx-cart-panel /></aside>
     </div>
+    <tx-back-button />
     <tx-floating-cart />
     <tx-bottom-nav />
   `,
