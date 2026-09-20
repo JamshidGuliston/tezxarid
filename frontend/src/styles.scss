@@ -2,6 +2,7 @@
 html, body { margin: 0; padding: 0; }
 body { font-family: system-ui, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; background: #fff; }
 a { -webkit-tap-highlight-color: transparent; }
-/* --tx-nav-h: height of the fixed bottom nav; floating controls and sticky bars offset from it. */
-:root { --brand: #F60; --tx-nav-h: 4rem; }
+/* --tx-nav-h: total height of the fixed bottom nav incl. the iOS safe-area inset;
+   floating controls and sticky bars offset from it. 0 on desktop (nav hidden). */
+:root { --brand: #F60; --tx-nav-h: calc(4rem + env(safe-area-inset-bottom, 0px)); }
 @media (min-width: 900px) { :root { --tx-nav-h: 0px; } }

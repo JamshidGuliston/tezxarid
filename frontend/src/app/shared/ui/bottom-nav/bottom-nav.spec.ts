@@ -23,10 +23,23 @@ describe('BottomNav', () => {
     expect(links.map((a) => a.textContent!.trim())).toEqual(['Bosh sahifa', 'Qidiruv', 'Buyurtmalar', 'Profil']);
     expect(fixture.nativeElement.querySelectorAll('a svg').length).toBe(4);
     expect(fixture.nativeElement.querySelectorAll('button').length).toBe(0);
+    expect(fixture.nativeElement.querySelector('nav[aria-label]')).toBeTruthy();
+    expect(links.filter((a) => a.hasAttribute('aria-current')).length).toBe(0);
   });
 
   it('marks the current section active', async () => {
     await TestBed.inject(Router).navigateByUrl('/search');
+    const fixture = TestBed.createComponent(BottomNav);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const active = fixture.nativeElement.querySelectorAll('a.active') as NodeListOf<HTMLAnchorElement>;
+    expect(active.length).toBe(1);
+    expect(active[0].getAttribute('href')).toBe('/search');
+    expect(active[0].getAttribute('aria-current')).toBe('page');
+  });
+
+  it('keeps the section active when the URL carries query params', async () => {
+    await TestBed.inject(Router).navigateByUrl('/search?q=olma');
     const fixture = TestBed.createComponent(BottomNav);
     await fixture.whenStable();
     fixture.detectChanges();

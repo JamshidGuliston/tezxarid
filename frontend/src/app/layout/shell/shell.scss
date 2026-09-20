@@ -1,12 +1,12 @@
 :host { display: flex; flex-direction: column; min-height: 100dvh; }
 /* The bottom nav is position: fixed, so reserve its height under the content. */
-.body { flex: 1; display: block; padding-bottom: calc(var(--tx-nav-h) + env(safe-area-inset-bottom, 0px)); }
+.body { flex: 1; display: block; padding-bottom: var(--tx-nav-h); }
 .sidebar, .cart { display: none; }
 .sidebar a { display: block; padding: .6rem 1rem; color: #333; text-decoration: none; }
 .sidebar a.active { color: #F60; font-weight: 700; }
 
 @media (min-width: 900px) {
-  .body { display: grid; grid-template-columns: 220px 1fr 340px; padding-bottom: 0; }
+  .body { display: grid; grid-template-columns: 220px 1fr 340px; }
   .sidebar { display: block; border-right: 1px solid #eee; padding-top: .5rem; }
   .cart { display: block; border-left: 1px solid #eee; }
   tx-floating-cart, tx-bottom-nav { display: none; }
